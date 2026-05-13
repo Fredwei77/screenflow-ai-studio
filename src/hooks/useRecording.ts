@@ -47,7 +47,11 @@ export function useRecording() {
         }
         if (!mimeType) throw new Error('No supported video mimeType found');
 
-        const mediaRecorder = new MediaRecorder(stream, { mimeType });
+        const mediaRecorder = new MediaRecorder(stream, {
+          mimeType,
+          audioBitsPerSecond: 128000,
+          videoBitsPerSecond: 2500000,
+        });
 
         mediaRecorder.ondataavailable = (event) => {
           if (event.data.size > 0) {

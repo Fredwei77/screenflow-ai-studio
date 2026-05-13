@@ -63,4 +63,40 @@ export const aiApi = {
       method: 'POST',
       body: JSON.stringify({ transcript }),
     }),
+  generateSummary: (transcript: string) =>
+    request<{ keyPoints: string[]; actionItems: string[]; questions: string[] }>('/ai/summary', {
+      method: 'POST',
+      body: JSON.stringify({ transcript }),
+    }),
+};
+
+// Polls
+export const pollApi = {
+  getPolls: (meetingId: string) =>
+    request<any[]>(`/polls/${meetingId}`),
+  createPoll: (meetingId: string, question: string, options: string[], createdBy: string) =>
+    request<any>(`/polls/${meetingId}`, {
+      method: 'POST',
+      body: JSON.stringify({ question, options, createdBy }),
+    }),
+  vote: (pollId: string, userId: string, userName: string, optionIdx: number) =>
+    request<any>(`/polls/${pollId}/vote`, {
+      method: 'POST',
+      body: JSON.stringify({ userId, userName, optionIdx }),
+    }),
+  closePoll: (pollId: string) =>
+    request<any>(`/polls/${pollId}/close`, { method: 'PATCH' }),
+};
+
+// Recordings
+export const recordingApi = {
+  getRecordings: (meetingId: string) =>
+    request<any[]>(`/recordings/${meetingId}`),
+  saveRecording: (meetingId: string, data: { userId: string; userName: string; fileName: string; fileSize: number; duration: number; mimeType: string }) =>
+    request<any>(`/recordings/${meetingId}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteRecording: (id: string) =>
+    request<any>(`/recordings/${id}`, { method: 'DELETE' }),
 };

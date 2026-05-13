@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { RecorderState, Question, AnalysisMetric, type MediaSourceType } from '../types';
 import Recorder from '../components/Recorder';
@@ -17,6 +18,7 @@ import { formatDuration } from '../lib/formatters';
 import { Mic, Monitor, Camera, Square, Play, Download, Settings2, Moon, Sun, ArrowLeft } from 'lucide-react';
 
 export const RecordPage: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { stream, mediaSource, error, setError, switchMediaSource, initCamera } = useMediaStream();
@@ -193,7 +195,7 @@ export const RecordPage: React.FC = () => {
             <div className="flex items-center gap-4 sm:gap-6">
               <div className="flex items-center gap-2">
                 <div className={`w-3 h-3 rounded-full ${recorderState === RecorderState.RECORDING ? 'bg-red-500 animate-pulse' : 'bg-gray-600'}`} />
-                <span className="text-gray-400 font-mono text-xs sm:text-sm">{recorderState === RecorderState.RECORDING ? 'REC' : 'READY'}</span>
+                <span className="text-gray-400 font-mono text-xs sm:text-sm">{recorderState === RecorderState.RECORDING ? t('recording.rec') : t('recording.ready')}</span>
               </div>
               {recorderState === RecorderState.RECORDING && (
                 <>
@@ -210,18 +212,18 @@ export const RecordPage: React.FC = () => {
             <div className="flex gap-2 sm:gap-4">
               {recorderState === RecorderState.IDLE || recorderState === RecorderState.FINISHED ? (
                 <button onClick={handleStartRecording} disabled={!!error || !stream} className={`flex items-center gap-2 px-4 sm:px-8 py-2 sm:py-3 rounded-full font-bold shadow-lg transition-all text-sm sm:text-base ${error || !stream ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 text-white shadow-red-900/20 hover:scale-105'}`}>
-                  <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-current" /> <span className="hidden sm:inline">Start</span>
+                  <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-current" /> <span className="hidden sm:inline">{t('common.start')}</span>
                 </button>
               ) : (
                 <button onClick={handleStopRecording} className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-4 sm:px-8 py-2 sm:py-3 rounded-full font-bold transition-all border border-gray-600 text-sm sm:text-base">
-                  <Square className="w-4 h-4 sm:w-5 sm:h-5 fill-current" /> Stop
+                  <Square className="w-4 h-4 sm:w-5 sm:h-5 fill-current" /> {t('common.stop')}
                 </button>
               )}
             </div>
             <div className="w-16 sm:w-32 flex justify-end">
               {downloadUrl && (
-                <button onClick={downloadVideo} className="text-indigo-400 hover:text-indigo-300 flex flex-col items-center gap-1 text-xs" title="Download (Ctrl+D)">
-                  <Download className="w-5 h-5 sm:w-6 sm:h-6" /> Save
+                <button onClick={downloadVideo} className="text-indigo-400 hover:text-indigo-300 flex flex-col items-center gap-1 text-xs" title={t('recording.download')}>
+                  <Download className="w-5 h-5 sm:w-6 sm:h-6" /> {t('recording.save')}
                 </button>
               )}
             </div>
@@ -232,11 +234,11 @@ export const RecordPage: React.FC = () => {
           <div className="flex-1 min-h-0"><QuestionPanel questions={questions} isProcessing={isAiProcessing} /></div>
           <div className={`h-1/3 rounded-xl p-4 flex flex-col ${theme === 'dark' ? 'bg-gray-900/50 border border-gray-800' : 'bg-white border border-gray-200'}`}>
             <div className="flex justify-between items-center mb-2">
-              <h3 className="text-sm font-semibold text-gray-400">Analysis</h3>
-              <span className="text-xs text-green-500">Active</span>
+              <h3 className="text-sm font-semibold text-gray-400">{t('recording.analysis')}</h3>
+              <span className="text-xs text-green-500">{t('recording.active')}</span>
             </div>
             <div className="flex-1 relative">
-              {performanceData.length > 0 ? <PerformanceChart data={performanceData} /> : <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-sm">Speak to generate...</div>}
+              {performanceData.length > 0 ? <PerformanceChart data={performanceData} /> : <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-sm">{t('recording.speakToGenerate')}</div>}
             </div>
           </div>
         </aside>

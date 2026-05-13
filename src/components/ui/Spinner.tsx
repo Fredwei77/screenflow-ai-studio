@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface SpinnerProps {
   size?: 'sm' | 'md' | 'lg';
@@ -12,11 +13,12 @@ const sizes = {
 };
 
 export const Spinner: React.FC<SpinnerProps> = ({ size = 'md', className = '' }) => {
+  const { t } = useTranslation();
   return (
     <div
       className={`${sizes[size]} border-2 border-gray-600 border-t-indigo-500 rounded-full animate-spin ${className}`}
       role="status"
-      aria-label="Loading"
+      aria-label={t('common.loading')}
     />
   );
 };

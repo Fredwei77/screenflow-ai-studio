@@ -1,0 +1,163 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "loading": "Loading",
+    "close": "Close",
+    "send": "Send",
+    "save": "Save",
+    "start": "Start",
+    "stop": "Stop",
+    "anonymous": "Anonymous",
+    "unknown": "Unknown",
+    "you": "(You)",
+    "copied": "Copied!",
+    "failed": "Request failed",
+    "chars": "{{count}} chars"
+  },
+  "home": {
+    "title": "ScreenFlow AI",
+    "subtitle": "Video Teaching Platform",
+    "yourName": "Your Name",
+    "namePlaceholder": "Enter your display name",
+    "createMeeting": "Create a Meeting",
+    "createMeetingDesc": "Start a new video session",
+    "newMeeting": "New Meeting",
+    "joinMeeting": "Join a Meeting",
+    "joinMeetingDesc": "Enter a meeting code to join",
+    "meetingCode": "Meeting code",
+    "join": "Join",
+    "soloRecording": "Or start a solo recording session"
+  },
+  "meeting": {
+    "copyCode": "Copy meeting code",
+    "copyCodeBtn": "Copy code",
+    "participants": "{{count}} participant",
+    "participants_other": "{{count}} participants",
+    "chat": "Chat",
+    "people": "People",
+    "board": "Board",
+    "polls": "Polls",
+    "recs": "Recs",
+    "recordings": "Recordings"
+  },
+  "controls": {
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "startVideo": "Start Video",
+    "stopVideo": "Stop Video",
+    "sharing": "Sharing",
+    "share": "Share",
+    "stopShare": "Stop Share",
+    "raise": "Raise",
+    "lower": "Lower",
+    "subtitles": "Subtitles",
+    "summary": "Summary",
+    "record": "Record",
+    "stopRec": "Stop Rec",
+    "leave": "Leave"
+  },
+  "chat": {
+    "noMessages": "No messages yet",
+    "placeholder": "Type a message...",
+    "send": "Send message"
+  },
+  "whiteboard": {
+    "title": "Whiteboard",
+    "pen": "Pen",
+    "eraser": "Eraser",
+    "width": "Width {{size}}",
+    "clearAll": "Clear all"
+  },
+  "polls": {
+    "title": "Polls",
+    "newPoll": "New poll",
+    "noPolls": "No polls yet",
+    "question": "Question",
+    "questionPlaceholder": "Ask a question...",
+    "options": "Options",
+    "option": "Option {{num}}",
+    "addOption": "Add option",
+    "creating": "Creating...",
+    "createPoll": "Create Poll",
+    "closePoll": "Close Poll",
+    "pollClosed": "Poll closed",
+    "votes": "{{count}} vote",
+    "votes_other": "{{count}} votes",
+    "youVoted": "(You voted: {{option}})",
+    "failedCreate": "Failed to create poll. Please try again."
+  },
+  "summary": {
+    "title": "Meeting Summary",
+    "generating": "Generating summary from transcript...",
+    "description": "Generate an AI-powered summary of the meeting transcript.",
+    "generate": "Generate Summary",
+    "regenerate": "Regenerate",
+    "keyPoints": "Key Points",
+    "actionItems": "Action Items",
+    "openQuestions": "Open Questions",
+    "notEnough": "Not enough transcript data to generate a summary. Keep talking first!",
+    "failed": "Failed to generate summary. Please try again."
+  },
+  "recordings": {
+    "title": "Recordings",
+    "noRecordings": "No recordings yet",
+    "heading": "Recordings ({{count}})",
+    "delete": "Delete"
+  },
+  "recording": {
+    "rec": "REC",
+    "ready": "READY",
+    "save": "Save",
+    "download": "Download (Ctrl+D)",
+    "analysis": "Analysis",
+    "active": "Active",
+    "speakToGenerate": "Speak to generate...",
+    "connectionError": "Connection Error",
+    "initializing": "Initializing...",
+    "previewMode": "Preview Mode"
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": "Appearance",
+    "theme": "Theme",
+    "dark": "Dark",
+    "light": "Light",
+    "language": "Language",
+    "configuration": "Configuration"
+  },
+  "shortcuts": {
+    "title": "Keyboard Shortcuts",
+    "showShortcuts": "Show keyboard shortcuts",
+    "closeShortcuts": "Close shortcuts dialog",
+    "startStopRecording": "Start/Stop Recording",
+    "downloadVideo": "Download Video",
+    "switchToScreen": "Switch to Screen",
+    "switchToCamera": "Switch to Camera",
+    "switchToBoth": "Switch to Screen + Mic",
+    "pressEsc": "Press ... Esc ... to close"
+  },
+  "questions": {
+    "aiCopilot": "AI Co-Pilot",
+    "thinking": "Thinking...",
+    "listening": "Listening",
+    "startSpeaking": "Start speaking...",
+    "aiDescription": "AI will generate questions to keep you going."
+  },
+  "performance": {
+    "liveAnalysis": "Live Analysis",
+    "performance": "Performance"
+  },
+  "subtitles": {
+    "notSupported": "Speech Recognition not supported! Please use Chrome or Edge.",
+    "networkError": "Network error: unable to connect to speech recognition service.",
+    "micDenied": "Microphone permission was denied.",
+    "micDeniedTip": "Please allow microphone access.",
+    "noSpeech": "No speech detected, please speak louder.",
+    "settings": "Subtitle Settings",
+    "language": "Recognition Language",
+    "autoHide": "Auto-hide delay",
+    "autoHideSeconds": "{{seconds}}s",
+    "systemDefault": "System default"
+  }
+}

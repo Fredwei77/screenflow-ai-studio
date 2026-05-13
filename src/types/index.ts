@@ -84,6 +84,95 @@ export interface ChatMessage {
   createdAt: string;
 }
 
+// ==================== Whiteboard ====================
+
+export type DrawTool = 'pen' | 'eraser' | 'rect' | 'circle' | 'line' | 'text';
+
+export interface DrawPoint {
+  x: number;
+  y: number;
+}
+
+export interface DrawStroke {
+  id: string;
+  tool: DrawTool;
+  color: string;
+  lineWidth: number;
+  points: DrawPoint[];
+  userId: string;
+  userName: string;
+}
+
+// ==================== Polls ====================
+
+export interface PollOption {
+  text: string;
+  votes: number;
+}
+
+export interface Poll {
+  id: string;
+  question: string;
+  options: string[];
+  isActive: boolean;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface PollWithVotes extends Poll {
+  votes: Vote[];
+  totalVotes: number;
+}
+
+export interface Vote {
+  id: string;
+  pollId: string;
+  userId: string;
+  userName: string;
+  optionIdx: number;
+}
+
+// ==================== Subtitles ====================
+
+export interface SubtitleEntry {
+  id: string;
+  text: string;
+  userId: string;
+  userName: string;
+  isFinal: boolean;
+  timestamp: number;
+}
+
+// ==================== Summary ====================
+
+export interface MeetingSummaryData {
+  id: string;
+  content: string;
+  transcript: string;
+  createdAt: string;
+}
+
+export interface SummaryContent {
+  keyPoints: string[];
+  actionItems: string[];
+  questions: string[];
+}
+
+// ==================== Recording Metadata ====================
+
+export interface RecordingMeta {
+  id: string;
+  roomId: string;
+  userId: string;
+  userName: string;
+  fileName: string;
+  fileSize: number;
+  duration: number;
+  mimeType: string;
+  storagePath?: string;
+  createdAt: string;
+}
+
 // ==================== WebRTC ====================
 
 export interface PeerConnection {

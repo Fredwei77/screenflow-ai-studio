@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface ModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   maxWidth = 'max-w-md',
 }) => {
+  const { t } = useTranslation();
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export const Modal: React.FC<ModalProps> = ({
           <button
             onClick={onClose}
             className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
-            aria-label="Close dialog"
+            aria-label={t('common.close')}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

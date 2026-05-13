@@ -3,8 +3,11 @@ import jwt from 'jsonwebtoken';
 import { prisma } from '../prisma.js';
 import { serverConfig } from '../config.js';
 
-// In-memory room state: meetingId -> Map<socketId, { userId, userName }>
-const rooms = new Map<string, Map<string, { userId: string; userName: string }>>();
+// In-memory room state: meetingId -> Map<socketId, { userId, userName, mediaState }>
+const rooms = new Map<string, Map<string, { userId: string; userName: string; isMuted?: boolean; isCameraOff?: boolean; isHandRaised?: boolean }>>();
+
+// In-memory whiteboard strokes per room
+const whiteboardStrokes = new Map<string, any[]>();
 
 export function setupSocketHandlers(io: Server) {
   io.on('connection', (socket: Socket) => {
@@ -74,10 +77,16 @@ export function setupSocketHandlers(io: Server) {
           update: {},
         });
       } catch (e) {
-        // Ignore DB errors for now
+        console.error('Failed to upsert room in DB:', e);
       }
 
       console.log(`${currentUserName} joined room ${meetingId} (${roomMembers.size} total)`);
+
+      // Send existing whiteboard strokes to new participant
+      const existingStrokes = whiteboardStrokes.get(meetingId) || [];
+      if (existingStrokes.length > 0) {
+        socket.emit('whiteboard:load', existingStrokes);
+      }
     });
 
     // WebRTC signaling
@@ -100,6 +109,8 @@ export function setupSocketHandlers(io: Server) {
 
     // Chat message
     socket.on('chat:message', async ({ roomId, content }: { roomId: string; content: string }) => {
+      // Verify sender is in the room
+      if (roomId !== currentRoom) return;
       const message = {
         id: crypto.randomUUID(),
         content,
@@ -130,21 +141,64 @@ export function setupSocketHandlers(io: Server) {
       }
     });
 
+    // Subtitle relay
+    socket.on('subtitle', ({ meetingId, text, isFinal }: { meetingId: string; text: string; isFinal: boolean }) => {
+      socket.to(meetingId).emit('subtitle', {
+        userId: currentUserId,
+        userName: currentUserName,
+        text,
+        isFinal,
+        timestamp: Date.now(),
+      });
+    });
+
+    // Whiteboard stroke relay
+    socket.on('whiteboard:stroke', ({ meetingId, stroke }: { meetingId: string; stroke: any }) => {
+      if (!whiteboardStrokes.has(meetingId)) {
+        whiteboardStrokes.set(meetingId, []);
+      }
+      whiteboardStrokes.get(meetingId)!.push(stroke);
+      socket.to(meetingId).emit('whiteboard:stroke', stroke);
+    });
+
+    // Whiteboard clear
+    socket.on('whiteboard:clear', ({ meetingId }: { meetingId: string }) => {
+      whiteboardStrokes.set(meetingId, []);
+      socket.to(meetingId).emit('whiteboard:clear');
+    });
+
+    // Poll events
+    socket.on('poll:created', ({ meetingId, poll }: { meetingId: string; poll: any }) => {
+      socket.to(meetingId).emit('poll:created', poll);
+    });
+
+    socket.on('poll:vote', ({ meetingId, pollId, userId, userName, optionIdx }: { meetingId: string; pollId: string; userId: string; userName: string; optionIdx: number }) => {
+      socket.to(meetingId).emit('poll:vote', { pollId, userId, userName, optionIdx });
+    });
+
+    socket.on('poll:closed', ({ meetingId, pollId }: { meetingId: string; pollId: string }) => {
+      socket.to(meetingId).emit('poll:closed', pollId);
+    });
+
     // Media state updates
-    socket.on('media:state', ({ meetingId, ...state }: { meetingId: string; isMuted?: boolean; isCameraOff?: boolean; isHandRaised?: boolean }) => {
-      // Update in-memory state
+    socket.on('media:state', ({ meetingId, isMuted, isCameraOff, isHandRaised }: { meetingId: string; isMuted?: boolean; isCameraOff?: boolean; isHandRaised?: boolean }) => {
+      // Update in-memory state (only allowed keys)
       const roomMembers = rooms.get(meetingId);
       if (roomMembers) {
         const member = roomMembers.get(socket.id);
         if (member) {
-          Object.assign(member, state);
+          if (isMuted !== undefined) member.isMuted = isMuted;
+          if (isCameraOff !== undefined) member.isCameraOff = isCameraOff;
+          if (isHandRaised !== undefined) member.isHandRaised = isHandRaised;
         }
       }
 
       // Broadcast to others
       socket.to(meetingId).emit('media:state', {
         userId: currentUserId,
-        ...state,
+        isMuted,
+        isCameraOff,
+        isHandRaised,
       });
     });
 
@@ -171,6 +225,7 @@ export function setupSocketHandlers(io: Server) {
 
         if (roomMembers.size === 0) {
           rooms.delete(meetingId);
+          whiteboardStrokes.delete(meetingId);
         }
       }
       sock.leave(meetingId);

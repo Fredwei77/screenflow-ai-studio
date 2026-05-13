@@ -41,26 +41,28 @@ declare global {
   }
 }
 
-export const useSpeechRecognition = (isRecording: boolean) => {
+export const useSpeechRecognition = (isRecording: boolean, language: string = 'en-US', t: (key: string) => string = (k) => k) => {
   const [transcript, setTranscript] = useState<string>('');
   const [interimTranscript, setInterimTranscript] = useState<string>('');
   const [fullSessionText, setFullSessionText] = useState<string>('');
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const isRecordingRef = useRef(isRecording);
+  const tRef = useRef(t);
+
+  useEffect(() => { isRecordingRef.current = isRecording; }, [isRecording]);
+  useEffect(() => { tRef.current = t; }, [t]);
 
   useEffect(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      console.error("❌ Speech Recognition not supported in this browser.");
-      alert("语音识别不支持！请使用 Chrome 或 Edge 浏览器。");
+      console.error('Speech Recognition not supported in this browser.');
       return;
     }
 
-    console.log('✅ Speech Recognition is supported');
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognitionAPI();
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = 'en-US';
-    console.log('✅ Speech Recognition initialized');
+    recognition.lang = language;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let final = '';
@@ -75,37 +77,25 @@ export const useSpeechRecognition = (isRecording: boolean) => {
       }
 
       if (final) {
-        console.log('🎤 Final transcript:', final);
         setTranscript((prev) => {
           const newFull = prev + final;
           setFullSessionText(newFull);
           return newFull;
         });
       }
-      if (interim) {
-        console.log('🎤 Interim transcript:', interim);
-      }
       setInterimTranscript(interim);
     };
 
     recognition.onerror = (event: any) => {
-      console.error("❌ Speech recognition error:", event.error, event.message);
-      
-      if (event.error === 'network') {
-        console.error('❌ 网络错误：无法连接到语音识别服务');
-        console.log('💡 提示：语音识别需要网络连接到 Google 服务器');
-        console.log('💡 如果在中国大陆，可能需要使用 VPN 或其他网络');
-      } else if (event.error === 'not-allowed') {
-        console.error('❌ 麦克风权限被拒绝');
-        alert('请允许麦克风权限！');
-      } else if (event.error === 'no-speech') {
-        console.warn('⚠️ 未检测到语音，请大声说话');
+      console.error('Speech recognition error:', event.error);
+      if (event.error === 'not-allowed') {
+        alert(tRef.current('subtitles.micDeniedTip'));
       }
     };
-    
+
     // Auto-restart if it stops unexpectedly while recording
     recognition.onend = () => {
-      if (isRecording) {
+      if (isRecordingRef.current) {
         try {
           recognition.start();
         } catch (e) {
@@ -117,26 +107,23 @@ export const useSpeechRecognition = (isRecording: boolean) => {
     recognitionRef.current = recognition;
 
     return () => {
-        if (recognitionRef.current) {
-            recognitionRef.current.stop();
-        }
-    }
-  }, [isRecording]); // Re-init on recording state change if needed, though usually stable
+      try {
+        recognitionRef.current?.stop();
+      } catch (e) {
+        // ignore
+      }
+      recognitionRef.current = null;
+    };
+  }, [language]);
 
   const startRecognition = useCallback(() => {
-    console.log('🎙️ Starting speech recognition...');
     setTranscript('');
     setInterimTranscript('');
     setFullSessionText('');
     try {
-      if (recognitionRef.current) {
-        recognitionRef.current.start();
-        console.log('✅ Speech recognition started');
-      } else {
-        console.error('❌ Speech recognition not initialized');
-      }
+      recognitionRef.current?.start();
     } catch (e) {
-      console.error("❌ Failed to start recognition:", e);
+      // ignore already started errors
     }
   }, []);
 
@@ -144,7 +131,7 @@ export const useSpeechRecognition = (isRecording: boolean) => {
     try {
       recognitionRef.current?.stop();
     } catch (e) {
-      console.error("Failed to stop recognition", e);
+      console.error('Failed to stop recognition', e);
     }
   }, []);
 
@@ -153,6 +140,6 @@ export const useSpeechRecognition = (isRecording: boolean) => {
     interimTranscript,
     startRecognition,
     stopRecognition,
-    fullSessionText
+    fullSessionText,
   };
 };

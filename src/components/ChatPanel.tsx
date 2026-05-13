@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Send } from 'lucide-react';
 import { useChatStore } from '../stores/useChatStore';
 import { sendMessage } from '../services/socket';
@@ -10,6 +11,7 @@ interface ChatPanelProps {
 }
 
 export const ChatPanel: React.FC<ChatPanelProps> = ({ roomId, currentUserId }) => {
+  const { t } = useTranslation();
   const [input, setInput] = useState('');
   const messages = useChatStore((s) => s.messages);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -39,7 +41,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ roomId, currentUserId }) =
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 text-sm py-8">No messages yet</div>
+          <div className="text-center text-gray-500 text-sm py-8">{t('chat.noMessages')}</div>
         ) : (
           messages.map((msg) => (
             <div key={msg.id} className={`flex flex-col ${msg.userId === currentUserId ? 'items-end' : 'items-start'}`}>
@@ -69,14 +71,14 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ roomId, currentUserId }) =
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message..."
+            placeholder={t('chat.placeholder')}
             className="flex-1 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <button
             onClick={handleSend}
             disabled={!input.trim()}
             className="p-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            aria-label="Send message"
+            aria-label={t('chat.send')}
           >
             <Send className="w-4 h-4" />
           </button>

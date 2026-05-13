@@ -52,3 +52,26 @@ export function sendMessage(roomId: string, content: string) {
 export function sendMediaState(meetingId: string, state: { isMuted?: boolean; isCameraOff?: boolean; isHandRaised?: boolean }) {
   getSocket().emit('media:state', { meetingId, ...state });
 }
+
+// Subtitle events
+export function sendSubtitle(meetingId: string, subtitle: { text: string; isFinal: boolean }) {
+  getSocket().emit('subtitle', { meetingId, ...subtitle });
+}
+
+// Whiteboard events
+export function sendWhiteboardStroke(meetingId: string, stroke: any) {
+  getSocket().emit('whiteboard:stroke', { meetingId, stroke });
+}
+
+export function sendWhiteboardClear(meetingId: string) {
+  getSocket().emit('whiteboard:clear', { meetingId });
+}
+
+// Poll events
+export function sendPollCreated(meetingId: string, poll: any) {
+  getSocket().emit('poll:created', { meetingId, poll });
+}
+
+export function sendPollVote(meetingId: string, data: { pollId: string; userId: string; userName: string; optionIdx: number }) {
+  getSocket().emit('poll:vote', { meetingId, ...data });
+}

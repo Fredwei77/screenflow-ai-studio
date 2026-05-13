@@ -27,6 +27,9 @@ model Room {
   createdAt   DateTime @default(now())
   messages    ChatMessage[]
   recordings  Recording[]
+  polls       Poll[]
+  summaries   MeetingSummary[]
+  recordingsMeta RecordingMetadata[]
 }
 
 model ChatMessage {
@@ -46,4 +49,51 @@ model Recording {
   duration  Int
   createdAt DateTime @default(now())
   room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model Poll {
+  id        String   @id @default(cuid())
+  roomId    String
+  question  String
+  options   String
+  isActive  Boolean  @default(true)
+  createdBy String
+  createdAt DateTime @default(now())
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  votes     Vote[]
+}
+
+model Vote {
+  id        String   @id @default(cuid())
+  pollId    String
+  userId    String
+  userName  String
+  optionIdx Int
+  createdAt DateTime @default(now())
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId])
+}
+
+model MeetingSummary {
+  id         String   @id @default(cuid())
+  roomId     String
+  content    String
+  transcript String
+  createdAt  DateTime @default(now())
+  room       Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model RecordingMetadata {
+  id          String   @id @default(cuid())
+  roomId      String
+  userId      String
+  userName    String
+  fileName    String
+  fileSize    Int
+  duration    Int
+  mimeType    String
+  storagePath String?
+  createdAt   DateTime @default(now())
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
 }

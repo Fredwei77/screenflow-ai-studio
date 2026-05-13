@@ -6,6 +6,8 @@ import { serverConfig } from './config.js';
 import { authRouter } from './routes/auth.js';
 import { roomsRouter } from './routes/rooms.js';
 import { aiRouter } from './routes/ai.js';
+import { pollsRouter } from './routes/polls.js';
+import { recordingsRouter } from './routes/recordings.js';
 import { setupSocketHandlers } from './socket/index.js';
 
 const app = express();
@@ -26,6 +28,8 @@ app.use(express.json());
 app.use('/api/auth', authRouter);
 app.use('/api/rooms', roomsRouter);
 app.use('/api/ai', aiRouter);
+app.use('/api/polls', pollsRouter);
+app.use('/api/recordings', recordingsRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {

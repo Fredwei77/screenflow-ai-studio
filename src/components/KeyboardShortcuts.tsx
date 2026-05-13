@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Keyboard, X } from 'lucide-react';
 
 interface KeyboardShortcutsProps {
@@ -6,6 +7,7 @@ interface KeyboardShortcutsProps {
 }
 
 const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ theme = 'dark' }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
 
   // Handle ESC key to close modal
@@ -20,11 +22,11 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ theme = 'dark' })
   }, [isOpen]);
 
   const shortcuts = [
-    { key: 'Ctrl + R', description: 'Start/Stop Recording' },
-    { key: 'Ctrl + D', description: 'Download Video' },
-    { key: 'Ctrl + 1', description: 'Switch to Screen' },
-    { key: 'Ctrl + 2', description: 'Switch to Camera' },
-    { key: 'Ctrl + 3', description: 'Switch to Screen + Mic' },
+    { key: 'Ctrl + R', description: t('shortcuts.startStopRecording') },
+    { key: 'Ctrl + D', description: t('shortcuts.downloadVideo') },
+    { key: 'Ctrl + 1', description: t('shortcuts.switchToScreen') },
+    { key: 'Ctrl + 2', description: t('shortcuts.switchToCamera') },
+    { key: 'Ctrl + 3', description: t('shortcuts.switchToBoth') },
   ];
 
   return (
@@ -37,8 +39,8 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ theme = 'dark' })
             ? 'text-gray-400 hover:text-white hover:bg-gray-800'
             : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
         }`}
-        title="Keyboard Shortcuts"
-        aria-label="Show keyboard shortcuts"
+        title={t('shortcuts.title')}
+        aria-label={t('shortcuts.showShortcuts')}
         aria-expanded={isOpen}
       >
         <Keyboard className="w-5 h-5" aria-hidden="true" />
@@ -61,11 +63,11 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ theme = 'dark' })
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <Keyboard className="w-6 h-6 text-indigo-400" aria-hidden="true" />
-                <h2 
+                <h2
                   id="shortcuts-title"
                   className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}
                 >
-                  Keyboard Shortcuts
+                  {t('shortcuts.title')}
                 </h2>
               </div>
               <button
@@ -75,7 +77,7 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ theme = 'dark' })
                     ? 'text-gray-400 hover:text-white hover:bg-gray-800'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
                 }`}
-                aria-label="Close shortcuts dialog"
+                aria-label={t('shortcuts.closeShortcuts')}
               >
                 <X className="w-5 h-5" aria-hidden="true" />
               </button>
@@ -110,11 +112,7 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ theme = 'dark' })
             {/* Footer */}
             <div className={`mt-6 pt-4 border-t ${theme === 'dark' ? 'border-gray-800' : 'border-gray-200'}`}>
               <p className={`text-xs text-center ${theme === 'dark' ? 'text-gray-500' : 'text-gray-600'}`}>
-                Press <kbd className={`px-2 py-0.5 border rounded text-xs ${
-                  theme === 'dark'
-                    ? 'bg-gray-800 border-gray-700'
-                    : 'bg-gray-100 border-gray-300'
-                }`}>Esc</kbd> to close
+                {t('shortcuts.pressEsc')}
               </p>
             </div>
           </div>

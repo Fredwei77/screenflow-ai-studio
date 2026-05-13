@@ -21,22 +21,34 @@ export function useMediaStream() {
         setError(null);
         let newStream: MediaStream;
 
+        const micAudioConstraints: MediaTrackConstraints = {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000,
+          channelCount: 1,
+        };
+
         if (type === 'screen') {
-          newStream = await navigator.mediaDevices.getDisplayMedia({
+          const screenStream = await navigator.mediaDevices.getDisplayMedia({
             video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
-            audio: true,
+            audio: false,
           });
+          const micStream = await navigator.mediaDevices.getUserMedia({ audio: micAudioConstraints });
+          newStream = new MediaStream([
+            ...screenStream.getVideoTracks(),
+            ...micStream.getAudioTracks(),
+          ]);
         } else if (type === 'camera') {
           newStream = await navigator.mediaDevices.getUserMedia({
             video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: 'user', frameRate: { ideal: 30 } },
-            audio: true,
+            audio: micAudioConstraints,
           });
         } else {
-          const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+          const micStream = await navigator.mediaDevices.getUserMedia({ audio: micAudioConstraints });
           newStream = new MediaStream([
             ...screenStream.getVideoTracks(),
-            ...screenStream.getAudioTracks(),
             ...micStream.getAudioTracks(),
           ]);
         }
@@ -75,7 +87,13 @@ export function useMediaStream() {
     try {
       const newStream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: 'user', frameRate: { ideal: 30 } },
-        audio: true,
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 48000,
+          channelCount: 1,
+        },
       });
       setStream(newStream);
       setError(null);

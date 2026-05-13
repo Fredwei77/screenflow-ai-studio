@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Question } from '../types';
 import { MessageCircle, Zap, HelpCircle, Lightbulb } from 'lucide-react';
 
@@ -8,6 +9,7 @@ interface QuestionPanelProps {
 }
 
 const QuestionPanel: React.FC<QuestionPanelProps> = ({ questions, isProcessing }) => {
+  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,10 +32,10 @@ const QuestionPanel: React.FC<QuestionPanelProps> = ({ questions, isProcessing }
       <div className="p-4 border-b border-gray-750 bg-gray-900 flex justify-between items-center">
         <h3 className="font-semibold text-gray-100 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-          AI Co-Pilot
+          {t('questions.aiCopilot')}
         </h3>
         <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded">
-          {isProcessing ? 'Thinking...' : 'Listening'}
+          {isProcessing ? t('questions.thinking') : t('questions.listening')}
         </span>
       </div>
 
@@ -41,8 +43,8 @@ const QuestionPanel: React.FC<QuestionPanelProps> = ({ questions, isProcessing }
         {questions.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-gray-500 text-center opacity-60">
             <MessageCircle className="w-12 h-12 mb-3" />
-            <p className="text-sm">Start speaking...</p>
-            <p className="text-xs mt-1">AI will generate questions to keep you going.</p>
+            <p className="text-sm">{t('questions.startSpeaking')}</p>
+            <p className="text-xs mt-1">{t('questions.aiDescription')}</p>
           </div>
         ) : (
           questions.map((q) => (

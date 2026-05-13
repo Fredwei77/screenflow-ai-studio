@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Mic, MicOff, Video, VideoOff, Hand } from 'lucide-react';
 import type { Participant } from '../types';
 
@@ -8,10 +9,11 @@ interface ParticipantListProps {
 }
 
 export const ParticipantList: React.FC<ParticipantListProps> = ({ participants, currentUserId }) => {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col h-full overflow-y-auto p-3">
       <div className="text-xs text-gray-500 uppercase tracking-wider mb-3 px-1">
-        {participants.length} participant{participants.length !== 1 ? 's' : ''}
+        {t('meeting.participants', { count: participants.length })}
       </div>
       <div className="space-y-1">
         {participants.map((p) => (
@@ -33,7 +35,7 @@ export const ParticipantList: React.FC<ParticipantListProps> = ({ participants, 
                   {p.userName}
                 </span>
                 {p.userId === currentUserId && (
-                  <span className="text-xs text-gray-500">(You)</span>
+                  <span className="text-xs text-gray-500">{t('common.you')}</span>
                 )}
               </div>
             </div>

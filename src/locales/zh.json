@@ -1,0 +1,161 @@
+{
+  "common": {
+    "cancel": "取消",
+    "delete": "删除",
+    "loading": "加载中",
+    "close": "关闭",
+    "send": "发送",
+    "save": "保存",
+    "start": "开始",
+    "stop": "停止",
+    "anonymous": "匿名",
+    "unknown": "未知",
+    "you": "（你）",
+    "copied": "已复制！",
+    "failed": "请求失败",
+    "chars": "{{count}} 个字符"
+  },
+  "home": {
+    "title": "ScreenFlow AI",
+    "subtitle": "视频教学平台",
+    "yourName": "你的名字",
+    "namePlaceholder": "输入你的显示名称",
+    "createMeeting": "创建会议",
+    "createMeetingDesc": "开始一个新的视频会话",
+    "newMeeting": "新会议",
+    "joinMeeting": "加入会议",
+    "joinMeetingDesc": "输入会议代码加入",
+    "meetingCode": "会议代码",
+    "join": "加入",
+    "soloRecording": "或开始一个独立录制会话"
+  },
+  "meeting": {
+    "copyCode": "复制会议代码",
+    "copyCodeBtn": "复制代码",
+    "participants": "{{count}} 位参与者",
+    "chat": "聊天",
+    "people": "成员",
+    "board": "白板",
+    "polls": "投票",
+    "recs": "录制",
+    "recordings": "录制列表"
+  },
+  "controls": {
+    "mute": "静音",
+    "unmute": "取消静音",
+    "startVideo": "开启视频",
+    "stopVideo": "关闭视频",
+    "sharing": "共享中",
+    "share": "共享",
+    "stopShare": "停止共享",
+    "raise": "举手",
+    "lower": "放下",
+    "subtitles": "字幕",
+    "summary": "摘要",
+    "record": "录制",
+    "stopRec": "停止录制",
+    "leave": "离开"
+  },
+  "chat": {
+    "noMessages": "暂无消息",
+    "placeholder": "输入消息...",
+    "send": "发送消息"
+  },
+  "whiteboard": {
+    "title": "白板",
+    "pen": "画笔",
+    "eraser": "橡皮擦",
+    "width": "宽度 {{size}}",
+    "clearAll": "清除全部"
+  },
+  "polls": {
+    "title": "投票",
+    "newPoll": "新建投票",
+    "noPolls": "暂无投票",
+    "question": "问题",
+    "questionPlaceholder": "输入问题...",
+    "options": "选项",
+    "option": "选项 {{num}}",
+    "addOption": "添加选项",
+    "creating": "创建中...",
+    "createPoll": "创建投票",
+    "closePoll": "关闭投票",
+    "pollClosed": "投票已关闭",
+    "votes": "{{count}} 票",
+    "youVoted": "（你投了：{{option}}）",
+    "failedCreate": "创建投票失败，请重试。"
+  },
+  "summary": {
+    "title": "会议摘要",
+    "generating": "正在从转录文本生成摘要...",
+    "description": "生成基于 AI 的会议转录摘要。",
+    "generate": "生成摘要",
+    "regenerate": "重新生成",
+    "keyPoints": "要点",
+    "actionItems": "待办事项",
+    "openQuestions": "未解决问题",
+    "notEnough": "转录数据不足，无法生成摘要。请先继续发言！",
+    "failed": "生成摘要失败，请重试。"
+  },
+  "recordings": {
+    "title": "录制列表",
+    "noRecordings": "暂无录制",
+    "heading": "录制列表（{{count}}）",
+    "delete": "删除"
+  },
+  "recording": {
+    "rec": "录制中",
+    "ready": "准备就绪",
+    "save": "保存",
+    "download": "下载 (Ctrl+D)",
+    "analysis": "分析",
+    "active": "活跃",
+    "speakToGenerate": "请开始说话...",
+    "connectionError": "连接错误",
+    "initializing": "初始化中...",
+    "previewMode": "预览模式"
+  },
+  "settings": {
+    "title": "设置",
+    "appearance": "外观",
+    "theme": "主题",
+    "dark": "深色",
+    "light": "浅色",
+    "language": "语言",
+    "configuration": "配置"
+  },
+  "shortcuts": {
+    "title": "键盘快捷键",
+    "showShortcuts": "显示键盘快捷键",
+    "closeShortcuts": "关闭快捷键对话框",
+    "startStopRecording": "开始/停止录制",
+    "downloadVideo": "下载视频",
+    "switchToScreen": "切换到屏幕",
+    "switchToCamera": "切换到摄像头",
+    "switchToBoth": "切换到屏幕+麦克风",
+    "pressEsc": "按 ... Esc ... 关闭"
+  },
+  "questions": {
+    "aiCopilot": "AI 副驾驶",
+    "thinking": "思考中...",
+    "listening": "聆听中",
+    "startSpeaking": "请开始说话...",
+    "aiDescription": "AI 将生成问题帮助你继续。"
+  },
+  "performance": {
+    "liveAnalysis": "实时分析",
+    "performance": "表现"
+  },
+  "subtitles": {
+    "notSupported": "语音识别不支持！请使用 Chrome 或 Edge 浏览器。",
+    "networkError": "网络错误：无法连接到语音识别服务。",
+    "micDenied": "麦克风权限被拒绝。",
+    "micDeniedTip": "请允许麦克风权限！",
+    "noSpeech": "未检测到语音，请大声说话。",
+    "settings": "字幕设置",
+    "language": "识别语言",
+    "autoHide": "自动隐藏延迟",
+    "autoHideSeconds": "{{seconds}}秒",
+    "systemDefault": "系统默认"
+  }
+}

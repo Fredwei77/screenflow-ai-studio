@@ -9,9 +9,13 @@ async function waitForRateLimit() {
   const now = Date.now();
   const elapsed = now - lastRequestTime;
   if (elapsed < MIN_REQUEST_INTERVAL) {
-    await new Promise((r) => setTimeout(r, MIN_REQUEST_INTERVAL - elapsed));
+    const waitTime = MIN_REQUEST_INTERVAL - elapsed;
+    // Set the timestamp BEFORE waiting to prevent concurrent callers from bypassing
+    lastRequestTime = now + waitTime;
+    await new Promise((r) => setTimeout(r, waitTime));
+  } else {
+    lastRequestTime = now;
   }
-  lastRequestTime = Date.now();
 }
 
 function cleanAndParseJSON(text: string): any {
@@ -133,4 +137,34 @@ Output ONLY a JSON array: [{"name":"Clarity","value":85,"fullMark":100},...]`;
     if (arr) result = arr;
   }
   return Array.isArray(result) ? result : [];
+}
+
+export async function generateMeetingSummary(transcript: string) {
+  const systemPrompt = `You are an expert meeting summarizer. Analyze the meeting transcript and produce a structured summary.
+Output ONLY valid JSON with this exact format:
+{
+  "keyPoints": ["point 1", "point 2", ...],
+  "actionItems": ["action 1", "action 2", ...],
+  "questions": ["question 1", "question 2", ...]
+}
+- keyPoints: 3-7 main topics discussed
+- actionItems: concrete next steps or tasks mentioned (empty array if none)
+- questions: open questions or unresolved items (empty array if none)`;
+
+  const messages = [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: `Meeting transcript:\n\n${transcript.substring(0, 4000)}` },
+  ];
+
+  const content = await callOpenRouter(messages, 2, 30000);
+  if (!content) return null;
+
+  const data = cleanAndParseJSON(content);
+  if (!data) return null;
+
+  return {
+    keyPoints: Array.isArray(data.keyPoints) ? data.keyPoints : [],
+    actionItems: Array.isArray(data.actionItems) ? data.actionItems : [],
+    questions: Array.isArray(data.questions) ? data.questions : [],
+  };
 }

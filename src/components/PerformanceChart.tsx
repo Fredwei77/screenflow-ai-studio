@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Radar,
   RadarChart,
@@ -15,11 +16,12 @@ interface Props {
 }
 
 const PerformanceChart: React.FC<Props> = ({ data }) => {
+  const { t } = useTranslation();
   if (data.length === 0) return null;
 
   return (
     <div className="w-full h-64 mt-4">
-      <h4 className="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wide text-center">Live Analysis</h4>
+      <h4 className="text-sm font-semibold text-gray-400 mb-2 uppercase tracking-wide text-center">{t('performance.liveAnalysis')}</h4>
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart cx="50%" cy="50%" outerRadius="70%" data={data}>
           <PolarGrid stroke="#4a5568" />

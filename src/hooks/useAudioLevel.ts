@@ -8,11 +8,13 @@ export function useAudioLevel() {
 
   const startVisualization = useCallback((stream: MediaStream) => {
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 48000 });
       const analyser = audioContext.createAnalyser();
       const source = audioContext.createMediaStreamSource(stream);
 
-      analyser.fftSize = 256;
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.8;
+
       source.connect(analyser);
 
       audioContextRef.current = audioContext;
@@ -21,9 +23,18 @@ export function useAudioLevel() {
       const update = () => {
         if (!analyserRef.current) return;
         const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-        analyserRef.current.getByteFrequencyData(dataArray);
-        const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
-        setAudioLevel(Math.min(100, (average / 255) * 100));
+        analyserRef.current.getByteTimeDomainData(dataArray);
+        let max = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          const v = Math.abs(dataArray[i] - 128);
+          if (v > max) max = v;
+        }
+        const level = Math.min(100, (max / 128) * 100);
+        setAudioLevel((prev) => {
+          if (level > prev + 4) return prev + 4;
+          if (level < prev - 2) return prev - 2;
+          return level;
+        });
         animationFrameRef.current = requestAnimationFrame(update);
       };
 
