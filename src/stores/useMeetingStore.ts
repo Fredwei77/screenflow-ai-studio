@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import type { Participant, Room } from '../types';
 
+export type BackgroundMode = 'none' | 'blur' | 'solid' | 'image';
+
 interface MeetingState {
   currentRoom: Room | null;
   participants: Participant[];
@@ -10,6 +12,9 @@ interface MeetingState {
   isCameraOff: boolean;
   isScreenSharing: boolean;
   isHandRaised: boolean;
+  virtualBgMode: BackgroundMode;
+  virtualBgColor: string;
+  virtualBgImageUrl: string | null;
 
   setCurrentRoom: (room: Room | null) => void;
   setParticipants: (participants: Participant[]) => void;
@@ -23,6 +28,9 @@ interface MeetingState {
   toggleCamera: () => void;
   toggleScreenShare: () => void;
   toggleHandRaise: () => void;
+  setVirtualBgMode: (mode: BackgroundMode) => void;
+  setVirtualBgColor: (color: string) => void;
+  setVirtualBgImageUrl: (url: string | null) => void;
   reset: () => void;
 }
 
@@ -35,6 +43,9 @@ export const useMeetingStore = create<MeetingState>()((set) => ({
   isCameraOff: false,
   isScreenSharing: false,
   isHandRaised: false,
+  virtualBgMode: 'none',
+  virtualBgColor: '#1e293b',
+  virtualBgImageUrl: null,
 
   setCurrentRoom: (room) => set({ currentRoom: room }),
 
@@ -83,6 +94,10 @@ export const useMeetingStore = create<MeetingState>()((set) => ({
   toggleHandRaise: () =>
     set((state) => ({ isHandRaised: !state.isHandRaised })),
 
+  setVirtualBgMode: (mode) => set({ virtualBgMode: mode }),
+  setVirtualBgColor: (color) => set({ virtualBgColor: color }),
+  setVirtualBgImageUrl: (url) => set({ virtualBgImageUrl: url }),
+
   reset: () =>
     set({
       currentRoom: null,
@@ -93,5 +108,8 @@ export const useMeetingStore = create<MeetingState>()((set) => ({
       isCameraOff: false,
       isScreenSharing: false,
       isHandRaised: false,
+      virtualBgMode: 'none',
+      virtualBgColor: '#1e293b',
+      virtualBgImageUrl: null,
     }),
 }));

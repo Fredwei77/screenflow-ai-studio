@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, MessageSquare, Users, Hand, LogOut, Circle, Subtitles, FileText, PenTool, BarChart3, SlidersHorizontal } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, MessageSquare, Users, Hand, LogOut, Circle, Subtitles, FileText, PenTool, BarChart3, SlidersHorizontal, Image } from 'lucide-react';
 import { useMeetingStore } from '../stores/useMeetingStore';
 import { SubtitleSettings } from './SubtitleSettings';
+import { VirtualBackgroundSelector } from './VirtualBackgroundSelector';
 
 interface MeetingControlsProps {
   isRecording?: boolean;
@@ -37,7 +38,9 @@ export const MeetingControls: React.FC<MeetingControlsProps> = ({
 }) => {
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const { isMuted, isCameraOff, isScreenSharing, isHandRaised, toggleMute, toggleCamera, toggleScreenShare, toggleHandRaise } = useMeetingStore();
+  const { isMuted, isCameraOff, isScreenSharing, isHandRaised, toggleMute, toggleCamera, toggleScreenShare, toggleHandRaise, virtualBgMode } = useMeetingStore();
+
+  const [virtualBgOpen, setVirtualBgOpen] = useState(false);
 
   const ControlButton: React.FC<{
     onClick: () => void;
@@ -86,6 +89,17 @@ export const MeetingControls: React.FC<MeetingControlsProps> = ({
         icon={isCameraOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
         label={isScreenSharing ? t('controls.sharing') : isCameraOff ? t('controls.startVideo') : t('controls.stopVideo')}
       />
+      <div className="relative">
+        <ControlButton
+          onClick={() => setVirtualBgOpen(!virtualBgOpen)}
+          active={virtualBgMode !== 'none'}
+          icon={<Image className="w-5 h-5" />}
+          label={t('controls.bg')}
+        />
+        {virtualBgOpen && (
+          <VirtualBackgroundSelector isOpen={virtualBgOpen} onClose={() => setVirtualBgOpen(false)} />
+        )}
+      </div>
       <ControlButton
         onClick={() => { toggleScreenShare(); }}
         active={isScreenSharing}

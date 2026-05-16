@@ -8,6 +8,7 @@ import { ParticipantList } from '../components/ParticipantList';
 import { useMeetingStore } from '../stores/useMeetingStore';
 import { useChatStore } from '../stores/useChatStore';
 import { useWebRTC } from '../hooks/useWebRTC';
+import { useVirtualBackground } from '../hooks/useVirtualBackground';
 import { RemoteAudioPlayer } from '../components/RemoteAudioPlayer';
 import { SubtitleOverlay } from '../components/SubtitleOverlay';
 import { useSubtitles } from '../hooks/useSubtitles';
@@ -23,7 +24,8 @@ import { usePollStore } from '../stores/usePollStore';
 import { useMeetingRecording } from '../hooks/useMeetingRecording';
 import { getSocket, joinRoom, leaveRoom, disconnectSocket, sendMediaState } from '../services/socket';
 import { useTheme } from '../hooks/useTheme';
-import { Copy, Check, X } from 'lucide-react';
+import { Copy, Check, X, LogOut } from 'lucide-react';
+import { Modal } from '../components/ui/Modal';
 
 export const MeetingRoom: React.FC = () => {
   const { t } = useTranslation();
@@ -35,7 +37,7 @@ export const MeetingRoom: React.FC = () => {
   const userName = searchParams.get('name') || t('common.anonymous');
   const isHost = searchParams.get('host') === 'true';
 
-  const { participants, localStream, setLocalStream, remoteStreams, isMuted, isCameraOff, isScreenSharing, isHandRaised, reset } = useMeetingStore();
+  const { participants, localStream, setLocalStream, remoteStreams, isMuted, isCameraOff, isScreenSharing, isHandRaised, reset, virtualBgMode, virtualBgColor, virtualBgImageUrl } = useMeetingStore();
   const addMessage = useChatStore((s) => s.addMessage);
   const clearMessages = useChatStore((s) => s.clearMessages);
 
@@ -44,10 +46,28 @@ export const MeetingRoom: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [currentUserId, setCurrentUserId] = useState('');
   const [mediaError, setMediaError] = useState<string | null>(null);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
+  const processedStreamRef = useRef<MediaStream | null>(null);
 
-  const { cleanupAll, replaceVideoTrack } = useWebRTC(localStream);
+  // Virtual background processing
+  const processedStream = useVirtualBackground(localStream, {
+    mode: virtualBgMode,
+    color: virtualBgColor,
+    imageUrl: virtualBgImageUrl || undefined,
+    blurRadius: 12,
+  });
+
+  // Use processed stream when virtual bg is active, otherwise raw stream
+  const effectiveStream = virtualBgMode !== 'none' && processedStream ? processedStream : localStream;
+
+  // Keep processedStreamRef in sync
+  useEffect(() => {
+    processedStreamRef.current = effectiveStream;
+  }, [effectiveStream]);
+
+  const { cleanupAll, replaceVideoTrack } = useWebRTC(effectiveStream);
   const { isSubtitleEnabled, interimTranscript, toggleSubtitles } = useSubtitles(meetingId || '', userName, currentUserId);
   const { toggleSummaryModal } = useSummary();
   const { isWhiteboardOpen, toggleWhiteboard } = useWhiteboardStore();
@@ -149,7 +169,11 @@ export const MeetingRoom: React.FC = () => {
     if (localStream) {
       localStream.getVideoTracks().forEach((t) => { t.enabled = !isCameraOff; });
     }
-  }, [isCameraOff, localStream, isScreenSharing]);
+    // Also disable video track on processed stream when virtual bg is active
+    if (processedStreamRef.current && virtualBgMode !== 'none') {
+      processedStreamRef.current.getVideoTracks().forEach((t) => { t.enabled = !isCameraOff; });
+    }
+  }, [isCameraOff, localStream, isScreenSharing, virtualBgMode]);
 
   // Screen sharing
   useEffect(() => {
@@ -158,11 +182,13 @@ export const MeetingRoom: React.FC = () => {
         screenStreamRef.current.getTracks().forEach((t) => t.stop());
         screenStreamRef.current = null;
       }
-      if (localStream) {
-        const cameraTrack = localStream.getVideoTracks()[0];
+      // Restore camera track from the effective stream (processed or raw)
+      const streamToRestore = processedStreamRef.current || localStream;
+      if (streamToRestore) {
+        const cameraTrack = streamToRestore.getVideoTracks()[0];
         if (cameraTrack) {
           replaceVideoTrack(cameraTrack);
-          localStream.getVideoTracks().forEach((t) => { t.enabled = !isCameraOff; });
+          streamToRestore.getVideoTracks().forEach((t) => { t.enabled = !isCameraOff; });
         }
       }
       return;
@@ -180,8 +206,11 @@ export const MeetingRoom: React.FC = () => {
             localStream.getVideoTracks().forEach((t) => { t.enabled = false; });
           }
           screenTrack.onended = () => {
-            if (localStream) {
-              localStream.getVideoTracks().forEach((t) => { t.enabled = !useMeetingStore.getState().isCameraOff; });
+            const streamToRestore = processedStreamRef.current || localStream;
+            if (streamToRestore) {
+              streamToRestore.getVideoTracks().forEach((t) => { t.enabled = !useMeetingStore.getState().isCameraOff; });
+              const track = streamToRestore.getVideoTracks()[0];
+              if (track) replaceVideoTrack(track);
             }
             useMeetingStore.getState().toggleScreenShare();
           };
@@ -203,9 +232,12 @@ export const MeetingRoom: React.FC = () => {
   }, [isScreenSharing, localStream, replaceVideoTrack]);
 
   const handleLeave = useCallback(() => {
+    setShowLeaveConfirm(true);
+  }, []);
+
+  const confirmLeave = useCallback(() => {
     if (localStreamRef.current) localStreamRef.current.getTracks().forEach((t) => t.stop());
     if (screenStreamRef.current) screenStreamRef.current.getTracks().forEach((t) => t.stop());
-    // Send leave before disconnecting so the server gets the event
     if (meetingId) leaveRoom(meetingId);
     disconnectSocket();
     navigate('/');
@@ -269,7 +301,7 @@ export const MeetingRoom: React.FC = () => {
     {
       userId: currentUserId,
       name: userName,
-      stream: isScreenSharing && screenStreamRef.current ? screenStreamRef.current : (localStream || undefined),
+      stream: isScreenSharing && screenStreamRef.current ? screenStreamRef.current : (effectiveStream || undefined),
       isMuted,
       isCameraOff: isScreenSharing ? false : isCameraOff,
       isScreenSharing,
@@ -420,6 +452,14 @@ export const MeetingRoom: React.FC = () => {
         onStartRecording={startRecording}
         onStopRecording={stopRecording}
       />
+
+      <Modal isOpen={showLeaveConfirm} onClose={() => setShowLeaveConfirm(false)} title={t('leave.title')} maxWidth="max-w-sm">
+        <p className="text-gray-300 mb-6">{t('leave.confirm')}</p>
+        <div className="flex gap-3 justify-end">
+          <button onClick={() => setShowLeaveConfirm(false)} className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-700 hover:bg-gray-600 text-white transition-colors">{t('leave.stay')}</button>
+          <button onClick={confirmLeave} className="px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors">{t('leave.leave')}</button>
+        </div>
+      </Modal>
     </div>
   );
 };
