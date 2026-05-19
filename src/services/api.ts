@@ -1,6 +1,6 @@
 import { useAuthStore } from '../stores/useAuthStore';
 
-const API_BASE = '/api';
+const API_BASE = '/meet/api';
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = useAuthStore.getState().token;

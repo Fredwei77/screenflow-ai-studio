@@ -54,7 +54,8 @@
     "summary": "摘要",
     "record": "录制",
     "stopRec": "停止录制",
-    "leave": "离开"
+    "leave": "离开",
+    "bg": "虚拟背景"
   },
   "chat": {
     "noMessages": "暂无消息",
@@ -157,5 +158,30 @@
     "autoHide": "自动隐藏延迟",
     "autoHideSeconds": "{{seconds}}秒",
     "systemDefault": "系统默认"
+  },
+  "vbg": {
+    "title": "虚拟背景",
+    "none": "无",
+    "blur": "模糊",
+    "solid": "纯色",
+    "image": "图片",
+    "pickColor": "选择颜色",
+    "pickImage": "选择背景"
+  },
+  "permissions": {
+    "kick": "移出会议",
+    "kickConfirm": "确定要移除该参与者吗？",
+    "hostOnly": "仅限主持人",
+    "kicked": "你已被 {{by}} 移出会议",
+    "role": {
+      "host": "主持人",
+      "student": "学生"
+    }
+  },
+  "leave": {
+    "title": "离开会议",
+    "confirm": "确定要离开当前会议吗？",
+    "leave": "离开",
+    "stay": "留下"
   }
 }

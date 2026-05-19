@@ -55,7 +55,8 @@
     "summary": "Summary",
     "record": "Record",
     "stopRec": "Stop Rec",
-    "leave": "Leave"
+    "leave": "Leave",
+    "bg": "Background"
   },
   "chat": {
     "noMessages": "No messages yet",
@@ -159,5 +160,30 @@
     "autoHide": "Auto-hide delay",
     "autoHideSeconds": "{{seconds}}s",
     "systemDefault": "System default"
+  },
+  "vbg": {
+    "title": "Virtual Background",
+    "none": "None",
+    "blur": "Blur",
+    "solid": "Solid Color",
+    "image": "Image",
+    "pickColor": "Pick a color",
+    "pickImage": "Pick a background"
+  },
+  "permissions": {
+    "kick": "Remove from meeting",
+    "kickConfirm": "Are you sure you want to remove this participant?",
+    "hostOnly": "Host only",
+    "kicked": "You have been removed from the meeting by {{by}}",
+    "role": {
+      "host": "Host",
+      "student": "Student"
+    }
+  },
+  "leave": {
+    "title": "Leave Meeting",
+    "confirm": "Are you sure you want to leave this meeting?",
+    "leave": "Leave",
+    "stay": "Stay"
   }
 }

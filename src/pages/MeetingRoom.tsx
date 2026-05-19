@@ -22,7 +22,7 @@ import { useSubtitleStore } from '../stores/useSubtitleStore';
 import { useSummaryStore } from '../stores/useSummaryStore';
 import { usePollStore } from '../stores/usePollStore';
 import { useMeetingRecording } from '../hooks/useMeetingRecording';
-import { getSocket, joinRoom, leaveRoom, disconnectSocket, sendMediaState } from '../services/socket';
+import { getSocket, leaveRoom, disconnectSocket, sendMediaState } from '../services/socket';
 import { useTheme } from '../hooks/useTheme';
 import { Copy, Check, X, LogOut } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
@@ -67,7 +67,7 @@ export const MeetingRoom: React.FC = () => {
     processedStreamRef.current = effectiveStream;
   }, [effectiveStream]);
 
-  const { cleanupAll, replaceVideoTrack } = useWebRTC(effectiveStream);
+  const { joinRoom: sfuJoinRoom, cleanupAll, replaceVideoTrack } = useWebRTC(effectiveStream);
   const { isSubtitleEnabled, interimTranscript, toggleSubtitles } = useSubtitles(meetingId || '', userName, currentUserId);
   const { toggleSummaryModal } = useSummary();
   const { isWhiteboardOpen, toggleWhiteboard } = useWhiteboardStore();
@@ -110,7 +110,7 @@ export const MeetingRoom: React.FC = () => {
     };
   }, []);
 
-  // Join room via socket
+  // Join room via SFU (after local media is ready)
   useEffect(() => {
     if (!meetingId) return;
 
@@ -132,7 +132,8 @@ export const MeetingRoom: React.FC = () => {
     socket.on('chat:message', handleChatMessage);
     socket.on('participants-update', handleParticipantsUpdate);
 
-    joinRoom(meetingId, userName);
+    // Join room via SFU (this handles both socket join and mediasoup setup)
+    sfuJoinRoom(meetingId, userName);
 
     return () => {
       socket.off('room-joined', handleRoomJoined);

@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import { prisma } from '../prisma.js';
+import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { requireRole } from '../middleware/requireRole.js';
 
 export const pollsRouter = Router();
 
 // Get all polls for a room
 pollsRouter.get('/:meetingId', async (req, res) => {
   try {
-    const room = await prisma.room.findUnique({ where: { meetingId: req.params.meetingId } });
+    const room = await prisma.room.findUnique({ where: { meetingId: String(req.params.meetingId) } });
     if (!room) return res.status(404).json({ message: 'Room not found' });
 
     const polls = await prisma.poll.findMany({
@@ -39,7 +41,7 @@ pollsRouter.get('/:meetingId', async (req, res) => {
   }
 });
 
-// Create a poll
+// Create a poll (public)
 pollsRouter.post('/:meetingId', async (req, res) => {
   try {
     const { question, options, createdBy } = req.body;
@@ -47,7 +49,7 @@ pollsRouter.post('/:meetingId', async (req, res) => {
       return res.status(400).json({ message: 'Question and at least 2 options required' });
     }
 
-    const room = await prisma.room.findUnique({ where: { meetingId: req.params.meetingId } });
+    const room = await prisma.room.findUnique({ where: { meetingId: String(req.params.meetingId) } });
     if (!room) return res.status(404).json({ message: 'Room not found' });
 
     const poll = await prisma.poll.create({
@@ -120,11 +122,11 @@ pollsRouter.post('/:pollId/vote', async (req, res) => {
   }
 });
 
-// Close a poll
-pollsRouter.patch('/:pollId/close', async (req, res) => {
+// Close a poll (TEACHER only)
+pollsRouter.patch('/:pollId/close', authMiddleware, requireRole('TEACHER', 'ADMIN', 'TA'), async (req: AuthRequest, res) => {
   try {
     const poll = await prisma.poll.update({
-      where: { id: req.params.pollId },
+      where: { id: String(req.params.pollId) },
       data: { isActive: false },
     });
     res.json(poll);

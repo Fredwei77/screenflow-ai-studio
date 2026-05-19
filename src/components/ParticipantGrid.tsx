@@ -28,7 +28,18 @@ const VideoTile: React.FC<{ participant: ParticipantView }> = ({ participant }) 
     video.srcObject = participant.stream;
 
     if (!participant.isCameraOff || participant.isScreenSharing) {
-      video.play().catch(() => {});
+      // BUG 8 fix: retry play() with exponential backoff instead of silently swallowing
+      const attemptPlay = (retries = 3) => {
+        video.play().catch((err) => {
+          if (retries > 0) {
+            console.warn('[VideoTile] play() failed, retrying...', err.message);
+            setTimeout(() => attemptPlay(retries - 1), 500);
+          } else {
+            console.error('[VideoTile] play() failed after all retries:', err.message);
+          }
+        });
+      };
+      attemptPlay();
     }
   }, [participant.stream, participant.isCameraOff, participant.isScreenSharing]);
 

@@ -8,11 +8,12 @@ interface PollResultsProps {
   userId: string;
   onVote: (optionIdx: number) => void;
   onClose: () => void;
+  isHost?: boolean;
 }
 
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-export const PollResults: React.FC<PollResultsProps> = ({ poll, userId, onVote, onClose }) => {
+export const PollResults: React.FC<PollResultsProps> = ({ poll, userId, onVote, onClose, isHost }) => {
   const { t } = useTranslation();
   const userVote = poll.votes.find((v) => v.userId === userId);
   const hasVoted = !!userVote;
@@ -78,7 +79,7 @@ export const PollResults: React.FC<PollResultsProps> = ({ poll, userId, onVote, 
         </>
       )}
 
-      {poll.isActive && (
+      {poll.isActive && isHost && (
         <button
           onClick={onClose}
           className="w-full px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded-lg transition-colors"

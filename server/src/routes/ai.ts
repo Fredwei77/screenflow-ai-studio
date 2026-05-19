@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { generateQuestion, analyzePerformance, generateMeetingSummary } from '../services/aiService.js';
+import { authMiddleware, AuthRequest } from '../middleware/auth.js';
 
 export const aiRouter = Router();
 
-aiRouter.post('/questions', async (req, res) => {
+aiRouter.post('/questions', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { context, tone } = req.body;
     if (!context || context.length < 10) {
@@ -17,7 +18,7 @@ aiRouter.post('/questions', async (req, res) => {
   }
 });
 
-aiRouter.post('/analyze', async (req, res) => {
+aiRouter.post('/analyze', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { transcript } = req.body;
     if (!transcript || transcript.length < 30) {
@@ -31,7 +32,7 @@ aiRouter.post('/analyze', async (req, res) => {
   }
 });
 
-aiRouter.post('/summary', async (req, res) => {
+aiRouter.post('/summary', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { transcript } = req.body;
     if (!transcript || transcript.length < 50) {

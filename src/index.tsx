@@ -14,7 +14,7 @@ if (!rootElement) {
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <BrowserRouter>
+      <BrowserRouter basename="/meet">
         <App />
       </BrowserRouter>
     </ErrorBoundary>

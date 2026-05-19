@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import { prisma } from '../prisma.js';
+import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { requireRole } from '../middleware/requireRole.js';
 
 export const recordingsRouter = Router();
 
-// Get recordings for a room
+// Get recordings for a room (public)
 recordingsRouter.get('/:meetingId', async (req, res) => {
   try {
-    const room = await prisma.room.findUnique({ where: { meetingId: req.params.meetingId } });
+    const room = await prisma.room.findUnique({ where: { meetingId: String(req.params.meetingId) } });
     if (!room) return res.status(404).json({ message: 'Room not found' });
 
     const recordings = await prisma.recordingMetadata.findMany({
@@ -24,7 +26,7 @@ recordingsRouter.get('/:meetingId', async (req, res) => {
   }
 });
 
-// Save recording metadata
+// Save recording metadata (public)
 recordingsRouter.post('/:meetingId', async (req, res) => {
   try {
     const { userId, userName, fileName, fileSize, duration, mimeType } = req.body;
@@ -32,7 +34,7 @@ recordingsRouter.post('/:meetingId', async (req, res) => {
       return res.status(400).json({ message: 'userId and fileName required' });
     }
 
-    const room = await prisma.room.findUnique({ where: { meetingId: req.params.meetingId } });
+    const room = await prisma.room.findUnique({ where: { meetingId: String(req.params.meetingId) } });
     if (!room) return res.status(404).json({ message: 'Room not found' });
 
     const recording = await prisma.recordingMetadata.create({
@@ -57,10 +59,10 @@ recordingsRouter.post('/:meetingId', async (req, res) => {
   }
 });
 
-// Delete recording metadata
-recordingsRouter.delete('/:id', async (req, res) => {
+// Delete recording metadata (TEACHER only)
+recordingsRouter.delete('/:id', authMiddleware, requireRole('TEACHER', 'ADMIN', 'TA'), async (req: AuthRequest, res) => {
   try {
-    await prisma.recordingMetadata.delete({ where: { id: req.params.id } });
+    await prisma.recordingMetadata.delete({ where: { id: String(req.params.id) } });
     res.json({ success: true });
   } catch (error) {
     console.error('Delete recording error:', error);

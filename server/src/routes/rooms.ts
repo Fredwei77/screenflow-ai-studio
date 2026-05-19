@@ -1,18 +1,19 @@
 import { Router } from 'express';
+import { randomBytes } from 'crypto';
 import { prisma } from '../prisma.js';
 export const roomsRouter = Router();
 
-// Create a room
+// Create a room (public)
 roomsRouter.post('/', async (req, res) => {
   try {
     const { name, password } = req.body;
-    const meetingId = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const meetingId = randomBytes(4).toString('hex').toUpperCase();
 
     const room = await prisma.room.create({
       data: {
         meetingId,
         name: name || `Meeting ${meetingId}`,
-        hostId: req.body.hostId || 'anonymous',
+        hostId: 'anonymous',
         password: password || null,
       },
     });

@@ -10,8 +10,12 @@ const AudioElement: React.FC<{ stream: MediaStream; userId: string }> = ({ strea
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.srcObject = stream;
+      // Ensure audio plays (browser autoplay policy may block)
+      audioRef.current.play().catch((err) => {
+        console.warn('[RemoteAudioPlayer] audio play() failed for', userId, err.message);
+      });
     }
-  }, [stream]);
+  }, [stream, userId]);
 
   return (
     <audio

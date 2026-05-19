@@ -10,9 +10,10 @@ interface PollPanelProps {
   userId: string;
   userName: string;
   onClose: () => void;
+  isHost?: boolean;
 }
 
-export const PollPanel: React.FC<PollPanelProps> = ({ meetingId, userId, userName, onClose }) => {
+export const PollPanel: React.FC<PollPanelProps> = ({ meetingId, userId, userName, onClose, isHost }) => {
   const { t } = useTranslation();
   const { polls, createPoll, vote, closePoll } = usePolling(meetingId, userId, userName);
   const [showCreate, setShowCreate] = useState(false);
@@ -68,6 +69,7 @@ export const PollPanel: React.FC<PollPanelProps> = ({ meetingId, userId, userNam
                 userId={userId}
                 onVote={(idx) => vote(poll.id, idx)}
                 onClose={() => closePoll(poll.id)}
+                isHost={isHost}
               />
             </div>
           ))

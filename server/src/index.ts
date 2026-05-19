@@ -2,27 +2,37 @@ import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { serverConfig } from './config.js';
 import { authRouter } from './routes/auth.js';
 import { roomsRouter } from './routes/rooms.js';
 import { aiRouter } from './routes/ai.js';
 import { pollsRouter } from './routes/polls.js';
 import { recordingsRouter } from './routes/recordings.js';
-import { setupSocketHandlers } from './socket/index.js';
+import { setupSocketHandlers, initSfuWorker } from './socket/index.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const httpServer = createServer(app);
 
+// CORS configuration
+const allowedOrigins = serverConfig.nodeEnv === 'production'
+  ? (serverConfig.corsOrigin ? [serverConfig.corsOrigin] : [])
+  : ['http://localhost:3000', 'http://localhost:5173'];
+
 const io = new Server(httpServer, {
   cors: {
-    origin: ['http://localhost:3000', 'http://localhost:5173'],
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
+    credentials: true,
   },
 });
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(express.json({ limit: '1mb' }));
 
 // Routes
 app.use('/api/auth', authRouter);
@@ -36,10 +46,44 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Global error handler
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('Unhandled error:', err);
+  res.status(err.status || 500).json({ message: err.message || 'Internal server error' });
+});
+
 // Socket.IO
 setupSocketHandlers(io);
 
-// Start server
-httpServer.listen(serverConfig.port, () => {
-  console.log(`Server running on port ${serverConfig.port}`);
-});
+// Serve frontend in production
+if (serverConfig.nodeEnv === 'production') {
+  const distPath = path.join(__dirname, '../../dist');
+  console.log('Serving static files from:', distPath);
+  app.use(express.static(distPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.js')) {
+        res.setHeader('Content-Type', 'application/javascript');
+      } else if (filePath.endsWith('.css')) {
+        res.setHeader('Content-Type', 'text/css');
+      }
+    }
+  }));
+  app.get('{*path}', (_req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
+
+// Start server — initialize SFU worker first, then listen
+async function start() {
+  try {
+    await initSfuWorker();
+  } catch (err) {
+    console.error('[Server] SFU worker init failed, continuing without SFU:', err);
+  }
+
+  httpServer.listen(serverConfig.port, () => {
+    console.log(`Server running on port ${serverConfig.port}`);
+  });
+}
+
+start();

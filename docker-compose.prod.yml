@@ -1,0 +1,39 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:4000:4000"
+      # mediasoup SFU UDP port range
+      - "10000-10100:10000-10100/udp"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=file:/app/data/screenflow.db
+      - JWT_SECRET=${JWT_SECRET}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - AI_MODEL=${AI_MODEL:-meta-llama/llama-3.1-8b-instruct:free}
+      - CORS_ORIGIN=${CORS_ORIGIN:-https://www.emai2.cn}
+      # SFU configuration
+      - ANNOUNCED_IP=175.27.249.161
+      - SFU_RTC_MIN_PORT=10000
+      - SFU_RTC_MAX_PORT=10100
+    volumes:
+      - db-data:/app/data
+    restart: unless-stopped
+    depends_on:
+      - coturn
+
+  coturn:
+    image: instrumentisto/coturn:latest
+    network_mode: host
+    environment:
+      - DETECT_EXTERNAL_IP=yes
+      - EXTERNAL_IP=175.27.249.161
+    volumes:
+      - ./turnserver.conf:/etc/coturn/turnserver.conf:ro
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+
+volumes:
+  db-data:

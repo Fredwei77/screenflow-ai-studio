@@ -6,9 +6,12 @@ let socket: Socket | null = null;
 export function getSocket(): Socket {
   if (!socket) {
     const token = useAuthStore.getState().token;
-    socket = io(window.location.origin, {
+    socket = io({
+      path: '/socket.io/',
       auth: { token },
       transports: ['websocket', 'polling'],
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
   }
   return socket;
