@@ -131,7 +131,46 @@ export function setupSocketHandlers(io: Server) {
       });
       console.log('[Socket] user-joined emitted to room', meetingId, 'for', currentUserName, '(userId=', currentUserId, '), socketId=', socket.id);
 
-      // Send room state to the new user
+      // Broadcast updated participant list
+      io.to(meetingId).emit('participants-update', {
+        participants: Array.from(roomMembers.values()),
+      });
+
+      // Ensure room exists in DB (fire-and-forget, not blocking)
+      prisma.room.upsert({
+        where: { meetingId },
+        create: { meetingId, name: `Meeting ${meetingId}`, hostId: currentUserId },
+        update: {},
+      }).catch((e: any) => console.error('Failed to upsert room in DB:', e));
+
+      console.log(`${currentUserName} joined room ${meetingId} (${roomMembers.size} total)`);
+
+      // Send existing whiteboard strokes to new participant
+      const existingStrokes = whiteboardStrokes.get(meetingId) || [];
+      if (existingStrokes.length > 0) {
+        socket.emit('whiteboard:load', existingStrokes);
+      }
+
+      // --- SFU: Add peer to SFU room BEFORE telling client they joined ---
+      // This prevents a race condition where the client starts mediasoup init
+      // (getRouterRtpCapabilities, createWebRtcTransport, etc.) before
+      // socketToSfuRoom has the entry, causing "Not in a room" errors.
+      if (workerInitialized) {
+        try {
+          const sfuRoom = await getSfuRoom(meetingId, io);
+          sfuRoom.addPeer({
+            userId: currentUserId,
+            userName: currentUserName,
+            socketId: socket.id,
+          });
+          socketToSfuRoom.set(socket.id, { meetingId, room: sfuRoom });
+          console.log('[SFU] Peer added to SFU room for', currentUserName);
+        } catch (err) {
+          console.error('[SFU] Failed to add peer to SFU room:', err);
+        }
+      }
+
+      // NOW send room-joined — client can safely start SFU initialization
       const participants = Array.from(roomMembers.entries())
         .filter(([id]) => id !== socket.id)
         .map(([, data]) => ({ userId: data.userId, userName: data.userName, role: data.role }));
@@ -142,45 +181,6 @@ export function setupSocketHandlers(io: Server) {
       });
 
       console.log('[Socket] room-joined sent to', currentUserName, 'with participants:', participants);
-
-      // Broadcast updated participant list
-      io.to(meetingId).emit('participants-update', {
-        participants: Array.from(roomMembers.values()),
-      });
-
-      // Ensure room exists in DB
-      try {
-        await prisma.room.upsert({
-          where: { meetingId },
-          create: { meetingId, name: `Meeting ${meetingId}`, hostId: currentUserId },
-          update: {},
-        });
-      } catch (e) {
-        console.error('Failed to upsert room in DB:', e);
-      }
-
-      console.log(`${currentUserName} joined room ${meetingId} (${roomMembers.size} total)`);
-
-      // Send existing whiteboard strokes to new participant
-      const existingStrokes = whiteboardStrokes.get(meetingId) || [];
-      if (existingStrokes.length > 0) {
-        socket.emit('whiteboard:load', existingStrokes);
-      }
-
-      // --- SFU: Add peer to SFU room ---
-      if (workerInitialized) {
-        try {
-          const sfuRoom = await getSfuRoom(meetingId, io);
-          sfuRoom.addPeer({
-            userId: currentUserId,
-            userName: currentUserName,
-            socketId: socket.id,
-          });
-          socketToSfuRoom.set(socket.id, { meetingId, room: sfuRoom });
-        } catch (err) {
-          console.error('[SFU] Failed to add peer to SFU room:', err);
-        }
-      }
     });
 
     // ============================================================

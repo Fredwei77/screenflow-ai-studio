@@ -9,6 +9,10 @@ export function useAudioLevel() {
   const startVisualization = useCallback((stream: MediaStream) => {
     try {
       const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 48000 });
+      // Safari creates AudioContext in suspended state if not triggered by user gesture
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
       const analyser = audioContext.createAnalyser();
       const source = audioContext.createMediaStreamSource(stream);
 

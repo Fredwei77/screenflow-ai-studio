@@ -23,6 +23,7 @@ import { useSummaryStore } from '../stores/useSummaryStore';
 import { usePollStore } from '../stores/usePollStore';
 import { useMeetingRecording } from '../hooks/useMeetingRecording';
 import { getSocket, leaveRoom, disconnectSocket, sendMediaState } from '../services/socket';
+import { supportsGetDisplayMedia } from '../utils/browser';
 import { useTheme } from '../hooks/useTheme';
 import { Copy, Check, X, LogOut } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
@@ -196,6 +197,11 @@ export const MeetingRoom: React.FC = () => {
     }
 
     const startScreenShare = async () => {
+      if (!supportsGetDisplayMedia) {
+        alert(t('meeting.screenShareNotSupported', 'Screen sharing is not supported on this device.'));
+        useMeetingStore.getState().toggleScreenShare();
+        return;
+      }
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
         screenStreamRef.current = screenStream;
@@ -323,9 +329,9 @@ export const MeetingRoom: React.FC = () => {
   ];
 
   return (
-    <div className={`flex flex-col h-screen ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
+    <div className={`flex flex-col h-[100dvh] h-screen ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
       {/* Top Bar */}
-      <header className={`h-12 sm:h-14 flex items-center justify-between px-3 sm:px-4 border-b shrink-0 ${theme === 'dark' ? 'bg-gray-900/80 border-gray-800' : 'bg-white/80 border-gray-200'} backdrop-blur`}>
+      <header className={`h-12 sm:h-14 flex items-center justify-between px-3 sm:px-4 pt-[env(safe-area-inset-top)] border-b shrink-0 ${theme === 'dark' ? 'bg-gray-900/80 border-gray-800' : 'bg-white/80 border-gray-200'} backdrop-blur`}>
         <div className="flex items-center gap-2 sm:gap-3">
           <h1 className="text-sm sm:text-base font-semibold truncate max-w-[120px] sm:max-w-none">
             {meetingId}
@@ -347,7 +353,7 @@ export const MeetingRoom: React.FC = () => {
       {/* Main Area */}
       <div className="flex-1 flex overflow-hidden">
         {/* Video Grid */}
-        <div className="flex-1 relative p-2 sm:p-4 overflow-hidden">
+        <div className="flex-1 relative p-2 sm:p-4 overflow-y-auto">
           {mediaError ? (
             <div className="flex flex-col items-center justify-center h-full gap-4">
               <div className="w-16 h-16 rounded-full bg-red-600/20 flex items-center justify-center">

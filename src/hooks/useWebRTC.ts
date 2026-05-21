@@ -128,6 +128,7 @@ export function useWebRTC(localStream: MediaStream | null) {
     const device = new Device();
     deviceRef.current = device;
 
+    try {
     // Get router RTP capabilities from server
     const { rtpCapabilities } = await socketRequest('getRouterRtpCapabilities', undefined, 'rtpCapabilitiesResponse');
     await device.load({ routerRtpCapabilities: rtpCapabilities });
@@ -209,6 +210,23 @@ export function useWebRTC(localStream: MediaStream | null) {
     console.log('[WebRTC] Existing producers:', existingProducers.length);
     for (const { producerId, kind, peer } of existingProducers) {
       await consumeProducer(producerId, kind, peer);
+    }
+    } catch (err) {
+      // Clean up any partially-created transports
+      if (sendTransportRef.current) {
+        sendTransportRef.current.close();
+        sendTransportRef.current = null;
+      }
+      if (recvTransportRef.current) {
+        recvTransportRef.current.close();
+        recvTransportRef.current = null;
+      }
+      // Remove socket listeners that may have been registered
+      socket.off('newProducer');
+      socket.off('producerClosed');
+      // Clear device ref so retries can re-initialize
+      deviceRef.current = null;
+      throw err;
     }
   }, [socketRequest, consumeProducer]);
 
@@ -320,7 +338,24 @@ export function useWebRTC(localStream: MediaStream | null) {
       });
 
       // Initialize mediasoup device and transports
-      await initDevice();
+      // Retry up to 3 times in case of "Not in a room" race condition
+      let initError: Error | null = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          await initDevice();
+          initError = null;
+          break;
+        } catch (err: any) {
+          initError = err;
+          if (err.message === 'Not in a room' && attempt < 2) {
+            console.warn(`[WebRTC] SFU not ready yet, retrying (${attempt + 1}/3)...`);
+            await new Promise(r => setTimeout(r, 500 * (attempt + 1)));
+            continue;
+          }
+          throw err;
+        }
+      }
+      if (initError) throw initError;
 
       // Start producing local media
       if (localStream) {

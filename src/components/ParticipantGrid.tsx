@@ -28,25 +28,34 @@ const VideoTile: React.FC<{ participant: ParticipantView }> = ({ participant }) 
     video.srcObject = participant.stream;
 
     if (!participant.isCameraOff || participant.isScreenSharing) {
-      // BUG 8 fix: retry play() with exponential backoff instead of silently swallowing
+      // On iOS Safari, play() may reject with NotAllowedError for unmuted video
+      // without a prior user gesture. Since our <video> is muted, it should autoplay.
+      // Retry a few times in case the stream isn't ready yet.
+      let cancelled = false;
       const attemptPlay = (retries = 3) => {
+        if (cancelled) return;
         video.play().catch((err) => {
+          if (cancelled) return;
+          if (err.name === 'NotAllowedError') {
+            // Safari autoplay policy — will resume on next user interaction.
+            // Don't retry, it won't help without a gesture.
+            console.warn('[VideoTile] autoplay blocked (no user gesture), will play on interaction');
+            return;
+          }
           if (retries > 0) {
-            console.warn('[VideoTile] play() failed, retrying...', err.message);
             setTimeout(() => attemptPlay(retries - 1), 500);
-          } else {
-            console.error('[VideoTile] play() failed after all retries:', err.message);
           }
         });
       };
       attemptPlay();
+      return () => { cancelled = true; };
     }
   }, [participant.stream, participant.isCameraOff, participant.isScreenSharing]);
 
   const showVideo = participant.stream && (!participant.isCameraOff || participant.isScreenSharing);
 
   return (
-    <div className="relative rounded-xl overflow-hidden bg-gray-800 border border-gray-700 aspect-video">
+    <div className="relative rounded-xl overflow-hidden bg-gray-800 border border-gray-700 h-full">
       {showVideo ? (
         <video
           ref={videoRef}
@@ -96,20 +105,34 @@ const VideoTile: React.FC<{ participant: ParticipantView }> = ({ participant }) 
 export const ParticipantGrid: React.FC<ParticipantGridProps> = ({ participants }) => {
   const count = participants.length;
 
-  const gridClass =
+  const containerClass =
     count <= 1
-      ? 'grid-cols-1 max-w-2xl mx-auto'
+      ? 'max-w-2xl mx-auto'
+      : '';
+
+  const gridColsClass =
+    count <= 1
+      ? 'grid-cols-1'
       : count === 2
       ? 'grid-cols-1 sm:grid-cols-2'
       : count <= 4
       ? 'grid-cols-2'
-      : 'grid-cols-2 lg:grid-cols-3';
+      : count <= 6
+      ? 'grid-cols-2 sm:grid-cols-3'
+      : count <= 9
+      ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
+      : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5';
 
   return (
-    <div className={`grid ${gridClass} gap-2 sm:gap-4 h-full content-center`}>
-      {participants.map((p) => (
-        <VideoTile key={p.userId} participant={p} />
-      ))}
+    <div className={`h-full ${containerClass}`}>
+      <div
+        className={`grid ${gridColsClass} gap-2 sm:gap-4 h-full`}
+        style={{ gridAutoRows: '1fr' }}
+      >
+        {participants.map((p) => (
+          <VideoTile key={p.userId} participant={p} />
+        ))}
+      </div>
     </div>
   );
 };

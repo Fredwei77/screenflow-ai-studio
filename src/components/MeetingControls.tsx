@@ -4,6 +4,7 @@ import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, MessageSquare, Use
 import { useMeetingStore } from '../stores/useMeetingStore';
 import { SubtitleSettings } from './SubtitleSettings';
 import { VirtualBackgroundSelector } from './VirtualBackgroundSelector';
+import { supportsGetDisplayMedia, supportsCaptureStream, isIOS } from '../utils/browser';
 
 interface MeetingControlsProps {
   isRecording?: boolean;
@@ -75,7 +76,7 @@ export const MeetingControls: React.FC<MeetingControlsProps> = ({
   );
 
   return (
-    <div className="relative bg-gray-900/80 backdrop-blur border-t border-gray-800">
+    <div className="relative bg-gray-900/80 backdrop-blur border-t border-gray-800 pb-[env(safe-area-inset-bottom)]">
       {/* 横向滚动容器 — 手机端可以滚动查看更多按钮 */}
       <div className="flex items-center justify-center gap-1 sm:gap-2 px-2 py-2 sm:py-3 overflow-x-auto scrollbar-hide">
         <ControlButton
@@ -91,23 +92,27 @@ export const MeetingControls: React.FC<MeetingControlsProps> = ({
           icon={isCameraOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
           label={isScreenSharing ? t('controls.sharing') : isCameraOff ? t('controls.startVideo') : t('controls.stopVideo')}
         />
-        <div className="relative">
+        {supportsCaptureStream && (
+          <div className="relative">
+            <ControlButton
+              onClick={() => setVirtualBgOpen(!virtualBgOpen)}
+              active={virtualBgMode !== 'none'}
+              icon={<Image className="w-5 h-5" />}
+              label={t('controls.bg')}
+            />
+            {virtualBgOpen && (
+              <VirtualBackgroundSelector isOpen={virtualBgOpen} onClose={() => setVirtualBgOpen(false)} />
+            )}
+          </div>
+        )}
+        {supportsGetDisplayMedia && (
           <ControlButton
-            onClick={() => setVirtualBgOpen(!virtualBgOpen)}
-            active={virtualBgMode !== 'none'}
-            icon={<Image className="w-5 h-5" />}
-            label={t('controls.bg')}
+            onClick={() => { toggleScreenShare(); }}
+            active={isScreenSharing}
+            icon={isScreenSharing ? <MonitorOff className="w-5 h-5" /> : <MonitorUp className="w-5 h-5" />}
+            label={isScreenSharing ? t('controls.stopShare') : t('controls.share')}
           />
-          {virtualBgOpen && (
-            <VirtualBackgroundSelector isOpen={virtualBgOpen} onClose={() => setVirtualBgOpen(false)} />
-          )}
-        </div>
-        <ControlButton
-          onClick={() => { toggleScreenShare(); }}
-          active={isScreenSharing}
-          icon={isScreenSharing ? <MonitorOff className="w-5 h-5" /> : <MonitorUp className="w-5 h-5" />}
-          label={isScreenSharing ? t('controls.stopShare') : t('controls.share')}
-        />
+        )}
         <ControlButton
           onClick={() => { toggleHandRaise(); }}
           active={isHandRaised}

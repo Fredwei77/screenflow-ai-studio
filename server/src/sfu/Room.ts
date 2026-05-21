@@ -215,18 +215,11 @@ export class Room {
 
     console.log(`[Room ${this.meetingId}] Consumer created: ${consumer.id} for producer ${producerId} (${consumer.kind}) by ${peer.info.userId}`);
 
-    // Return full rtpParameters but with problematic fields cleaned
-    const cleanRtpParameters = JSON.parse(JSON.stringify(consumer.rtpParameters));
-
-    // Remove all encodings and rebuild with single minimal encoding
-    // This avoids "Duplicate a=msid lines" in Chrome's SDP parser
-    cleanRtpParameters.encodings = [{ ssrc: 1000000 + Math.floor(Math.random() * 1000000) }];
-
     return {
       consumerId: consumer.id,
       producerId,
       kind: consumer.kind,
-      rtpParameters: cleanRtpParameters,
+      rtpParameters: consumer.rtpParameters,
       peer: producerOwner || { userId: 'unknown', userName: 'Unknown', socketId: '' },
     };
   }

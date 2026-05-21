@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { RecorderState } from '../types';
 import { config } from '../config';
+import { getSupportedMimeType, getExtensionForMime } from '../utils/browser';
 
 export function useRecording() {
   const [recorderState, setRecorderState] = useState<RecorderState>(RecorderState.IDLE);
@@ -30,21 +31,7 @@ export function useRecording() {
       setError(null);
 
       try {
-        const mimeTypes = [
-          'video/webm;codecs=vp9,opus',
-          'video/webm;codecs=vp8,opus',
-          'video/webm;codecs=vp9',
-          'video/webm;codecs=vp8',
-          'video/webm',
-        ];
-
-        let mimeType = '';
-        for (const type of mimeTypes) {
-          if (MediaRecorder.isTypeSupported(type)) {
-            mimeType = type;
-            break;
-          }
-        }
+        const mimeType = getSupportedMimeType();
         if (!mimeType) throw new Error('No supported video mimeType found');
 
         const mediaRecorder = new MediaRecorder(stream, {
@@ -94,13 +81,15 @@ export function useRecording() {
 
   const downloadVideo = useCallback(() => {
     if (recordedChunks.length === 0) return;
-    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+    const mimeType = mediaRecorderRef.current?.mimeType || 'video/webm';
+    const ext = getExtensionForMime(mimeType);
+    const blob = new Blob(recordedChunks, { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     document.body.appendChild(a);
     a.style.display = 'none';
     a.href = url;
-    a.download = `recording-${new Date().toISOString()}.webm`;
+    a.download = `recording-${new Date().toISOString()}.${ext}`;
     a.click();
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
@@ -108,7 +97,8 @@ export function useRecording() {
 
   const createDownloadUrl = useCallback(() => {
     if (recorderState === RecorderState.FINISHED && recordedChunks.length > 0) {
-      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      const mimeType = mediaRecorderRef.current?.mimeType || 'video/webm';
+      const blob = new Blob(recordedChunks, { type: mimeType });
       const url = URL.createObjectURL(blob);
       setDownloadUrl(url);
       return url;

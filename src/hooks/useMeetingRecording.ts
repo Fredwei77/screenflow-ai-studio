@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { recordingApi } from '../services/api';
+import { getSupportedMimeType, getExtensionForMime } from '../utils/browser';
 
 export function useMeetingRecording(meetingId: string, userId: string, userName: string, localStream: MediaStream | null) {
   const [isRecording, setIsRecording] = useState(false);
@@ -23,19 +24,7 @@ export function useMeetingRecording(meetingId: string, userId: string, userName:
     }
 
     try {
-      const mimeTypes = [
-        'video/webm;codecs=vp9,opus',
-        'video/webm;codecs=vp8,opus',
-        'video/webm',
-      ];
-
-      let mimeType = '';
-      for (const type of mimeTypes) {
-        if (MediaRecorder.isTypeSupported(type)) {
-          mimeType = type;
-          break;
-        }
-      }
+      const mimeType = getSupportedMimeType();
       if (!mimeType) throw new Error('No supported recording format found');
 
       const recorder = new MediaRecorder(localStream, {
@@ -57,7 +46,8 @@ export function useMeetingRecording(meetingId: string, userId: string, userName:
 
         const blob = new Blob(chunks, { type: recorder.mimeType });
         const duration = Math.round((Date.now() - startTimeRef.current) / 1000);
-        const fileName = `recording-${meetingId}-${new Date().toISOString().replace(/[:.]/g, '-')}.webm`;
+        const ext = getExtensionForMime(recorder.mimeType);
+        const fileName = `recording-${meetingId}-${new Date().toISOString().replace(/[:.]/g, '-')}.${ext}`;
 
         // Download the recording
         let url: string | null = null;

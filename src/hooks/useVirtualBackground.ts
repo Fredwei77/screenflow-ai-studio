@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { BackgroundMode } from '../stores/useMeetingStore';
+import { supportsCaptureStream } from '../utils/browser';
 
 interface VirtualBackgroundOptions {
   mode: BackgroundMode;
@@ -22,6 +23,12 @@ export function useVirtualBackground(
 
   useEffect(() => {
     if (!rawStream || options.mode === 'none') {
+      setProcessedStream(null);
+      return;
+    }
+
+    // iOS Safari does not support canvas.captureStream()
+    if (!supportsCaptureStream) {
       setProcessedStream(null);
       return;
     }
