@@ -133,10 +133,7 @@ export function setupSocketHandlers(io: Server) {
 
       // Broadcast updated participant list
       io.to(meetingId).emit('participants-update', {
-        participants: Array.from(roomMembers.entries()).map(([socketId, data]) => ({
-          ...data,
-          socketId,
-        })),
+        participants: Array.from(roomMembers.values()),
       });
 
       // Ensure room exists in DB (fire-and-forget, not blocking)
@@ -503,10 +500,7 @@ export function setupSocketHandlers(io: Server) {
         roomMembers.delete(sock.id);
         sock.to(meetingId).emit('user-left', { userId: currentUserId, socketId: sock.id });
         io.to(meetingId).emit('participants-update', {
-          participants: Array.from(roomMembers.entries()).map(([socketId, data]) => ({
-            ...data,
-            socketId,
-          })),
+          participants: Array.from(roomMembers.values()),
         });
 
         if (roomMembers.size === 0) {

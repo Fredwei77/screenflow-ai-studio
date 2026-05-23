@@ -95,9 +95,7 @@ export function useWebRTC(localStream: MediaStream | null) {
 
       // Attach the track to the remote stream for this peer
       const track = consumer.track;
-      // Use socketId as key since it's unique per connection
-      // peer.userId may not match the participant's actual userId
-      const userId = peer.socketId;
+      const userId = peer.userId;
 
       // Get or create a MediaStream for this peer
       let remoteStream = useMeetingStore.getState().remoteStreams.get(userId);
