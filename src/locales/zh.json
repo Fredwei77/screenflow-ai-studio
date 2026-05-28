@@ -11,23 +11,98 @@
     "anonymous": "匿名",
     "unknown": "未知",
     "you": "（你）",
-    "copied": "已复制！",
+    "copied": "已复制",
     "failed": "请求失败",
     "chars": "{{count}} 个字符"
   },
   "home": {
     "title": "ScreenFlow AI",
-    "subtitle": "视频教学平台",
+    "subtitle": "AI 视频工作台",
+    "tagline": "面向在线教学 企业培训 内容创作者",
+    "headline": "AI 录课 自动字幕 会议总结 白板互动 一站完成",
+    "headlineLines": [
+      "AI 录课 自动字幕",
+      "会议总结 白板互动",
+      "一站完成"
+    ],
+    "description": "ScreenFlow AI 把视频会议、屏幕录制、实时字幕、AI 摘要和互动白板放进同一个工作台，帮助老师、培训团队和创作者更快完成课程录制、会议复盘和内容发布。",
+    "startRecording": "开始 AI 录课",
+    "viewPricing": "查看 Pro 方案",
+    "proBeta": "Pro 内测",
+    "workspace": "AI video workspace",
+    "entryTitle": "创建或加入会议",
+    "entryDesc": "快速进入录课、会议和互动白板空间。",
     "yourName": "你的名字",
     "namePlaceholder": "输入你的显示名称",
     "createMeeting": "创建会议",
-    "createMeetingDesc": "开始一个新的视频会话",
+    "createMeetingDesc": "开始一个新的视频会议",
     "newMeeting": "新会议",
     "joinMeeting": "加入会议",
     "joinMeetingDesc": "输入会议代码加入",
     "meetingCode": "会议代码",
     "join": "加入",
-    "soloRecording": "或开始一个独立录制会话"
+    "soloRecording": "或开始一个独立录制会话",
+    "valueProps": {
+      "recordingTitle": "AI 录课",
+      "recordingDesc": "屏幕和摄像头一体录制，适合课程、产品演示和培训复盘。",
+      "subtitlesTitle": "自动字幕",
+      "subtitlesDesc": "实时识别发言内容，录制后可用于字幕整理和内容复用。",
+      "summaryTitle": "会议总结",
+      "summaryDesc": "从转写文本提炼重点、待办和未解决问题，减少会后整理时间。",
+      "whiteboardTitle": "白板互动",
+      "whiteboardDesc": "边讲边画，配合投票和讨论，让远程教学更清楚。"
+    }
+  },
+  "pricing": {
+    "backHome": "返回首页",
+    "freeTrial": "免费试用",
+    "heroMainBefore": "用一个",
+    "heroHighlight": "AI 视频工作台",
+    "heroMainAfter": "完成录课 字幕 摘要和发布",
+    "heroSubLine1": "ScreenFlow AI 面向在线教学 企业培训和内容创作者 当前开放内测名额",
+    "heroSubLine2": "提交意向后可优先获得 Pro 功能 团队版和私有化部署支持",
+    "recommended": "推荐",
+    "plans": {
+      "freeUnit": "永久免费",
+      "freeDesc": "适合快速体验会议、录制和基础字幕。",
+      "freeCta": "开始免费录制",
+      "freeFeatures": ["最多 4 人会议", "本地录制下载", "基础实时字幕", "白板和投票体验", "带 ScreenFlow AI 品牌标识"],
+      "proUnit": "元/月",
+      "proDesc": "适合老师、讲师和创作者稳定录课。",
+      "proCta": "申请 Pro 内测",
+      "proFeatures": ["无水印导出", "更长录制时长", "AI 摘要和表现分析", "SRT/VTT 字幕导出", "视频剪辑、封面和发布工具"],
+      "teamUnit": "元/月起",
+      "teamDesc": "适合培训团队和企业内训。",
+      "teamCta": "预约团队版",
+      "teamFeatures": ["团队成员管理", "会议和录制归档", "统一品牌 Logo", "共享素材和模板", "私有化部署咨询"]
+    },
+    "footer": {
+      "privacy": "隐私政策",
+      "terms": "服务条款",
+      "about": "关于我们",
+      "support": "技术支持",
+      "social": "社交媒体",
+      "notice": "社区公告",
+      "email": "邮箱",
+      "phone": "电话"
+    },
+    "lead": {
+      "title": "{{plan}} 意向申请",
+      "submitted": "已记录你的试用/购买意向。当前数据保存在本地，后续可以直接接入后端 CRM 或埋点系统。",
+      "done": "完成",
+      "name": "姓名/团队名称",
+      "contact": "联系方式",
+      "contactPlaceholder": "微信、手机号或邮箱",
+      "teamSize": "团队人数",
+      "useCase": "使用场景",
+      "submit": "提交意向",
+      "useCases": {
+        "education": "在线教学/录课",
+        "training": "企业培训/内训",
+        "sales": "产品演示/销售录屏",
+        "creator": "自媒体内容制作"
+      }
+    }
   },
   "meeting": {
     "copyCode": "复制会议代码",
@@ -95,11 +170,11 @@
     "keyPoints": "要点",
     "actionItems": "待办事项",
     "openQuestions": "未解决问题",
-    "notEnough": "转录数据不足，无法生成摘要。请先继续发言！",
+    "notEnough": "转录数据不足，无法生成摘要。请先继续发言。",
     "failed": "生成摘要失败，请重试。"
   },
   "recordings": {
-    "title": "录制列表",
+    "title": "录制",
     "noRecordings": "暂无录制",
     "heading": "录制列表（{{count}}）",
     "delete": "删除"
@@ -133,8 +208,8 @@
     "downloadVideo": "下载视频",
     "switchToScreen": "切换到屏幕",
     "switchToCamera": "切换到摄像头",
-    "switchToBoth": "切换到屏幕+麦克风",
-    "pressEsc": "按 ... Esc ... 关闭"
+    "switchToBoth": "切换到屏幕 + 麦克风",
+    "pressEsc": "按 Esc 关闭"
   },
   "questions": {
     "aiCopilot": "AI 副驾驶",
@@ -151,13 +226,25 @@
     "notSupported": "语音识别不支持！请使用 Chrome 或 Edge 浏览器。",
     "networkError": "网络错误：无法连接到语音识别服务。",
     "micDenied": "麦克风权限被拒绝。",
-    "micDeniedTip": "请允许麦克风权限！",
+    "micDeniedTip": "请允许麦克风权限。",
     "noSpeech": "未检测到语音，请大声说话。",
     "settings": "字幕设置",
     "language": "识别语言",
     "autoHide": "自动隐藏延迟",
     "autoHideSeconds": "{{seconds}}秒",
-    "systemDefault": "系统默认"
+    "systemDefault": "系统默认",
+    "export": { "title": "导出字幕" },
+    "style": {
+      "title": "样式",
+      "fontSize": "字体大小",
+      "fontColor": "字体颜色",
+      "backgroundColor": "背景颜色",
+      "position": "位置",
+      "positionTop": "顶部",
+      "positionMiddle": "中间",
+      "positionBottom": "底部",
+      "opacity": "不透明度"
+    }
   },
   "vbg": {
     "title": "虚拟背景",
@@ -168,20 +255,104 @@
     "pickColor": "选择颜色",
     "pickImage": "选择背景"
   },
+  "layout": {
+    "camera-only": "仅摄像头",
+    "screen-only": "仅屏幕",
+    "pip": "画中画",
+    "side-by-side": "左右并排",
+    "floating-camera": "摄像头悬浮",
+    "dragPip": "拖动移动",
+    "dragDivider": "拖动调整大小"
+  },
+  "editor": {
+    "title": "视频剪辑",
+    "edit": "编辑",
+    "noVideo": "未加载视频",
+    "trimRange": "片段时长",
+    "addBgm": "添加背景音乐",
+    "bgmVolume": "BGM 音量",
+    "burnSubtitles": "烧录字幕",
+    "export": "导出",
+    "exporting": "正在导出视频...",
+    "exportDone": "导出完成！",
+    "downloadExport": "下载"
+  },
   "permissions": {
     "kick": "移出会议",
     "kickConfirm": "确定要移除该参与者吗？",
     "hostOnly": "仅限主持人",
     "kicked": "你已被 {{by}} 移出会议",
-    "role": {
-      "host": "主持人",
-      "student": "学生"
-    }
+    "role": { "host": "主持人", "student": "学生" }
   },
   "leave": {
     "title": "离开会议",
     "confirm": "确定要离开当前会议吗？",
     "leave": "离开",
     "stay": "留下"
+  },
+  "teleprompter": {
+    "title": "AI 提词器",
+    "emptyTip": "在设置面板中粘贴你的文案。录制时 AI 会为你实时朗读。",
+    "placeholder": "在此粘贴文案...\n\n每行或每句会成为一个段落。\n录制时 AI 会为你朗读。",
+    "importFile": "导入 .txt/.md 文件",
+    "clearScript": "清空文案",
+    "lineCount": "{{count}} 个段落"
+  },
+  "backdrop": {
+    "title": "背景模板库",
+    "upload": "上传",
+    "fileTooBig": "图片不能超过 2MB。",
+    "storageFull": "存储空间已满，请先删除部分自定义背景。"
+  },
+  "onboarding": {
+    "title": "快速设置",
+    "step1Title": "选择画面来源",
+    "step1Desc": "选择要录制的内容：屏幕、摄像头或双画面。",
+    "step2Title": "选择背景",
+    "step2Desc": "选一个专业背景或上传你自己的图片。",
+    "step3Title": "准备录制",
+    "step3Desc": "一切就绪，点击开始即可！",
+    "screen": "屏幕",
+    "camera": "摄像头",
+    "both": "双画面",
+    "bgHint": "你随时可以更换或上传背景。",
+    "check1": "录制来源：{{source}}",
+    "check2": "背景已设置",
+    "noBg": "未选择背景",
+    "check3": "按 Ctrl+R 或点击录制按钮开始",
+    "skip": "跳过设置",
+    "back": "上一步",
+    "next": "下一步",
+    "startRecording": "开始录制"
+  },
+  "annotation": {
+    "tools": {
+      "pen": "画笔",
+      "highlight": "高亮",
+      "arrow": "箭头",
+      "circle": "圆圈",
+      "laser": "激光笔",
+      "eraser": "橡皮擦"
+    },
+    "clearAll": "清除所有标注"
+  },
+  "publish": {
+    "title": "发布到社交媒体",
+    "selectPlatforms": "选择平台",
+    "content": "内容",
+    "titlePlaceholder": "输入视频标题...",
+    "descriptionPlaceholder": "输入视频描述...",
+    "tags": "标签",
+    "addTag": "添加",
+    "publishStatus": "发布状态",
+    "clear": "清除",
+    "cancel": "取消",
+    "publish": "发布",
+    "platformsSelected": "已选择 {{count}} 个平台",
+    "notConnected": "未连接",
+    "disconnect": "断开连接",
+    "connect": "连接",
+    "uploadLogo": "上传Logo",
+    "remove": "移除"
   }
 }

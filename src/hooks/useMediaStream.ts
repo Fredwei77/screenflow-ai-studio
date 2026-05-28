@@ -3,6 +3,8 @@ import { RecorderState, type MediaSourceType } from '../types';
 
 export function useMediaStream() {
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const [mediaSource, setMediaSource] = useState<MediaSourceType>('camera');
   const [error, setError] = useState<string | null>(null);
   const recorderStateRef = useRef<RecorderState>(RecorderState.IDLE);
@@ -11,15 +13,20 @@ export function useMediaStream() {
     recorderStateRef.current = state;
   };
 
+  // Clean up a specific stream
+  const stopStream = (s: MediaStream | null) => {
+    if (s) s.getTracks().forEach((t) => t.stop());
+  };
+
   const switchMediaSource = useCallback(
     async (type: MediaSourceType) => {
       try {
-        if (stream) {
-          stream.getTracks().forEach((track) => track.stop());
-        }
+        // Stop existing streams
+        stopStream(stream);
+        stopStream(cameraStream);
+        stopStream(screenStream);
 
         setError(null);
-        let newStream: MediaStream;
 
         const micAudioConstraints: MediaTrackConstraints = {
           echoCancellation: true,
@@ -30,44 +37,56 @@ export function useMediaStream() {
         };
 
         if (type === 'screen') {
-          const screenStream = await navigator.mediaDevices.getDisplayMedia({
+          const displayStream = await navigator.mediaDevices.getDisplayMedia({
             video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
             audio: false,
           });
           const micStream = await navigator.mediaDevices.getUserMedia({ audio: micAudioConstraints });
-          newStream = new MediaStream([
-            ...screenStream.getVideoTracks(),
+          const combined = new MediaStream([
+            ...displayStream.getVideoTracks(),
             ...micStream.getAudioTracks(),
           ]);
+          setStream(combined);
+          setCameraStream(null);
+          setScreenStream(displayStream);
+          setMediaSource(type);
         } else if (type === 'camera') {
-          newStream = await navigator.mediaDevices.getUserMedia({
+          const camStream = await navigator.mediaDevices.getUserMedia({
             video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: 'user', frameRate: { ideal: 30 } },
             audio: micAudioConstraints,
           });
+          setStream(camStream);
+          setCameraStream(camStream);
+          setScreenStream(null);
+          setMediaSource(type);
         } else {
-          const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+          // 'both' — screen + mic + camera
+          const displayStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: false,
+          });
+          const camStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: 'user', frameRate: { ideal: 30 } },
+            audio: false,
+          });
           const micStream = await navigator.mediaDevices.getUserMedia({ audio: micAudioConstraints });
-          newStream = new MediaStream([
-            ...screenStream.getVideoTracks(),
+          const combined = new MediaStream([
+            ...displayStream.getVideoTracks(),
+            ...camStream.getVideoTracks(),
             ...micStream.getAudioTracks(),
           ]);
+          setStream(combined);
+          setCameraStream(camStream);
+          setScreenStream(displayStream);
+          setMediaSource(type);
         }
 
-        const tracks = newStream.getTracks();
-        if (tracks.length === 0) throw new Error('No tracks in new stream');
-
-        setStream(newStream);
-        setMediaSource(type);
-
-        const videoTrack = newStream.getVideoTracks()[0];
-        if (videoTrack) {
-          videoTrack.onended = () => {
-            if (recorderStateRef.current === RecorderState.RECORDING) {
-              // Signal that recording should stop (caller handles this)
-              window.dispatchEvent(new CustomEvent('media-track-ended'));
-            }
-          };
+        const tracks = stream?.getTracks() ?? [];
+        if (tracks.length === 0) {
+          // The new stream was just set; listen for track end on next render
         }
+
+        setError(null);
       } catch (err: any) {
         const errorMsg =
           err.name === 'NotAllowedError'
@@ -77,15 +96,17 @@ export function useMediaStream() {
             : `Failed to access media: ${err.message || 'Unknown error'}`;
         setError(errorMsg);
         setStream(null);
+        setCameraStream(null);
+        setScreenStream(null);
         setMediaSource(type);
       }
     },
-    [stream]
+    [stream, cameraStream, screenStream]
   );
 
   const initCamera = useCallback(async () => {
     try {
-      const newStream = await navigator.mediaDevices.getUserMedia({
+      const camStream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: 'user', frameRate: { ideal: 30 } },
         audio: {
           echoCancellation: true,
@@ -95,7 +116,9 @@ export function useMediaStream() {
           channelCount: 1,
         },
       });
-      setStream(newStream);
+      setStream(camStream);
+      setCameraStream(camStream);
+      setScreenStream(null);
       setError(null);
     } catch (err: any) {
       const errorMsg =
@@ -108,17 +131,42 @@ export function useMediaStream() {
     }
   }, []);
 
+  // Listen for track end events
   useEffect(() => {
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+    if (!stream) return;
+
+    const handleTrackEnded = () => {
+      if (recorderStateRef.current === RecorderState.RECORDING) {
+        window.dispatchEvent(new CustomEvent('media-track-ended'));
       }
     };
+
+    stream.getVideoTracks().forEach((track) => {
+      track.addEventListener('ended', handleTrackEnded);
+    });
+
+    return () => {
+      stream.getVideoTracks().forEach((track) => {
+        track.removeEventListener('ended', handleTrackEnded);
+      });
+    };
   }, [stream]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopStream(stream);
+      // Don't double-stop camera/screen if they're the same object as stream
+      if (cameraStream && cameraStream !== stream) stopStream(cameraStream);
+      if (screenStream && screenStream !== stream) stopStream(screenStream);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     stream,
     setStream,
+    cameraStream,
+    screenStream,
     mediaSource,
     setMediaSource,
     error,

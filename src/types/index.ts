@@ -38,6 +38,8 @@ export interface AnalysisMetric {
 
 export type MediaSourceType = 'screen' | 'camera' | 'both';
 
+export type LayoutMode = 'camera-only' | 'screen-only' | 'pip' | 'side-by-side' | 'floating-camera';
+
 // ==================== User & Auth ====================
 
 export interface User {

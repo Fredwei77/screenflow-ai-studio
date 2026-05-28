@@ -17,7 +17,22 @@
   },
   "home": {
     "title": "ScreenFlow AI",
-    "subtitle": "Video Teaching Platform",
+    "subtitle": "AI Video Workspace",
+    "tagline": "For online education, corporate training, and creators",
+    "headline": "AI course recording, auto subtitles, meeting summaries, and whiteboard interaction in one place",
+    "headlineLines": [
+      "AI course recording",
+      "Auto subtitles",
+      "Meeting summaries",
+      "Whiteboard interaction"
+    ],
+    "description": "ScreenFlow AI combines video meetings, screen recording, live subtitles, AI summaries, and an interactive whiteboard in one workspace so teachers, training teams, and creators can finish course recordings, meeting recaps, and content publishing faster.",
+    "startRecording": "Start AI Recording",
+    "viewPricing": "View Pro Plans",
+    "proBeta": "Pro Beta",
+    "workspace": "AI video workspace",
+    "entryTitle": "Create or Join a Meeting",
+    "entryDesc": "Quickly enter a recording, meeting, and whiteboard workspace.",
     "yourName": "Your Name",
     "namePlaceholder": "Enter your display name",
     "createMeeting": "Create a Meeting",
@@ -27,7 +42,68 @@
     "joinMeetingDesc": "Enter a meeting code to join",
     "meetingCode": "Meeting code",
     "join": "Join",
-    "soloRecording": "Or start a solo recording session"
+    "soloRecording": "Or start a solo recording session",
+    "valueProps": {
+      "recordingTitle": "AI Recording",
+      "recordingDesc": "Record screen and camera together for courses, demos, and training recaps.",
+      "subtitlesTitle": "Auto Subtitles",
+      "subtitlesDesc": "Recognize speech in real time and reuse transcripts for captions and content.",
+      "summaryTitle": "Meeting Summary",
+      "summaryDesc": "Extract key points, action items, and open questions from transcripts.",
+      "whiteboardTitle": "Whiteboard Interaction",
+      "whiteboardDesc": "Teach while drawing, with polls and discussion for clearer remote learning."
+    }
+  },
+  "pricing": {
+    "backHome": "Back Home",
+    "freeTrial": "Free Trial",
+    "heroMainBefore": "Use one",
+    "heroHighlight": "AI video workspace",
+    "heroMainAfter": "to record courses, add subtitles, summarize, and publish",
+    "heroSubLine1": "ScreenFlow AI serves online education, corporate training, and creators with beta access now open",
+    "heroSubLine2": "Submit your interest to get early access to Pro features, Team plans, and private deployment support",
+    "recommended": "Recommended",
+    "plans": {
+      "freeUnit": "Free forever",
+      "freeDesc": "Best for quickly trying meetings, recording, and basic subtitles.",
+      "freeCta": "Start Free Recording",
+      "freeFeatures": ["Up to 4 participants", "Local recording download", "Basic live subtitles", "Whiteboard and polls preview", "ScreenFlow AI branding"],
+      "proUnit": "CNY/month",
+      "proDesc": "For teachers, instructors, and creators recording regularly.",
+      "proCta": "Apply for Pro Beta",
+      "proFeatures": ["No-watermark export", "Longer recording duration", "AI summaries and performance analysis", "SRT/VTT subtitle export", "Video editing, covers, and publishing tools"],
+      "teamUnit": "CNY/month+",
+      "teamDesc": "For training teams and corporate learning.",
+      "teamCta": "Book Team Plan",
+      "teamFeatures": ["Team member management", "Meeting and recording archive", "Unified brand logo", "Shared assets and templates", "Private deployment consultation"]
+    },
+    "footer": {
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "about": "About Us",
+      "support": "Support",
+      "social": "Social Media",
+      "notice": "Community Notice",
+      "email": "Email",
+      "phone": "Phone"
+    },
+    "lead": {
+      "title": "{{plan}} Interest Form",
+      "submitted": "Your trial or purchase interest has been recorded locally. It can later connect to a backend CRM or analytics system.",
+      "done": "Done",
+      "name": "Name / Team Name",
+      "contact": "Contact",
+      "contactPlaceholder": "WeChat, phone, or email",
+      "teamSize": "Team Size",
+      "useCase": "Use Case",
+      "submit": "Submit Interest",
+      "useCases": {
+        "education": "Online education / course recording",
+        "training": "Corporate training",
+        "sales": "Product demo / sales recording",
+        "creator": "Creator content production"
+      }
+    }
   },
   "meeting": {
     "copyCode": "Copy meeting code",
@@ -159,7 +235,21 @@
     "language": "Recognition Language",
     "autoHide": "Auto-hide delay",
     "autoHideSeconds": "{{seconds}}s",
-    "systemDefault": "System default"
+    "systemDefault": "System default",
+    "export": {
+      "title": "Export Subtitles"
+    },
+    "style": {
+      "title": "Style",
+      "fontSize": "Font Size",
+      "fontColor": "Font Color",
+      "backgroundColor": "Background",
+      "position": "Position",
+      "positionTop": "Top",
+      "positionMiddle": "Middle",
+      "positionBottom": "Bottom",
+      "opacity": "Opacity"
+    }
   },
   "vbg": {
     "title": "Virtual Background",
@@ -169,6 +259,28 @@
     "image": "Image",
     "pickColor": "Pick a color",
     "pickImage": "Pick a background"
+  },
+  "layout": {
+    "camera-only": "Camera Only",
+    "screen-only": "Screen Only",
+    "pip": "Picture in Picture",
+    "side-by-side": "Side by Side",
+    "floating-camera": "Floating Camera",
+    "dragPip": "Drag to move",
+    "dragDivider": "Drag to resize"
+  },
+  "editor": {
+    "title": "Video Editor",
+    "edit": "Edit",
+    "noVideo": "No video loaded",
+    "trimRange": "Clip duration",
+    "addBgm": "Add BGM",
+    "bgmVolume": "BGM Volume",
+    "burnSubtitles": "Burn Subtitles",
+    "export": "Export",
+    "exporting": "Exporting video...",
+    "exportDone": "Export complete!",
+    "downloadExport": "Download"
   },
   "permissions": {
     "kick": "Remove from meeting",
@@ -185,5 +297,72 @@
     "confirm": "Are you sure you want to leave this meeting?",
     "leave": "Leave",
     "stay": "Stay"
+  },
+  "teleprompter": {
+    "title": "Teleprompter",
+    "emptyTip": "Paste your script in the settings panel to start. AI will read it to you while recording.",
+    "placeholder": "Paste your script here...\n\nEach line or sentence becomes a segment.\nThe AI will read it aloud during recording.",
+    "importFile": "Import .txt/.md file",
+    "clearScript": "Clear script",
+    "lineCount": "{{count}} segments",
+    "lineCount_other": "{{count}} segments"
+  },
+  "backdrop": {
+    "title": "Background Library",
+    "upload": "Upload",
+    "fileTooBig": "Image must be under 2MB.",
+    "storageFull": "Storage full. Please delete some custom backdrops first."
+  },
+  "onboarding": {
+    "title": "Quick Setup",
+    "step1Title": "Choose Your Source",
+    "step1Desc": "Pick what you want to record: screen, camera, or both.",
+    "step2Title": "Pick a Background",
+    "step2Desc": "Choose a professional backdrop or upload your own image.",
+    "step3Title": "Ready to Record",
+    "step3Desc": "Everything is set. Press start and go!",
+    "screen": "Screen",
+    "camera": "Camera",
+    "both": "Both",
+    "bgHint": "You can always change or upload backgrounds later.",
+    "check1": "Recording source: {{source}}",
+    "check2": "Background applied",
+    "noBg": "No background selected",
+    "check3": "Press Ctrl+R or click Record to start",
+    "skip": "Skip setup",
+    "back": "Back",
+    "next": "Next",
+    "startRecording": "Start Recording"
+  },
+  "annotation": {
+    "tools": {
+      "pen": "Pen",
+      "highlight": "Highlight",
+      "arrow": "Arrow",
+      "circle": "Circle",
+      "laser": "Laser Pointer",
+      "eraser": "Eraser"
+    },
+    "clearAll": "Clear All Annotations"
+  },
+  "publish": {
+    "title": "Publish to Social Media",
+    "selectPlatforms": "Select Platforms",
+    "content": "Content",
+    "titlePlaceholder": "Enter video title...",
+    "descriptionPlaceholder": "Enter video description...",
+    "tags": "Tags",
+    "addTag": "Add",
+    "publishStatus": "Publish Status",
+    "clear": "Clear",
+    "cancel": "Cancel",
+    "publish": "Publish",
+    "platformsSelected": "{{count}} platform selected",
+    "platformsSelected_other": "{{count}} platforms selected",
+    "notConnected": "Not connected",
+    "disconnect": "Disconnect",
+    "connect": "Connect",
+    "uploadLogo": "Upload Logo",
+    "remove": "Remove"
   }
 }
