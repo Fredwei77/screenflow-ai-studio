@@ -9,6 +9,7 @@ import { useMeetingStore } from '../stores/useMeetingStore';
 import { useChatStore } from '../stores/useChatStore';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { useVirtualBackground } from '../hooks/useVirtualBackground';
+import { usePrivacyBlur } from '../hooks/usePrivacyBlur';
 import { RemoteAudioPlayer } from '../components/RemoteAudioPlayer';
 import { SubtitleOverlay } from '../components/SubtitleOverlay';
 import { useSubtitles } from '../hooks/useSubtitles';
@@ -17,6 +18,7 @@ import { SummaryModal } from '../components/SummaryModal';
 import { WhiteboardPanel } from '../components/WhiteboardPanel';
 import { PollPanel } from '../components/PollPanel';
 import { RecordingList } from '../components/RecordingList';
+import { BlurOverlay, type BlurRegion } from '../components/BlurOverlay';
 import { useWhiteboardStore } from '../stores/useWhiteboardStore';
 import { useSubtitleStore } from '../stores/useSubtitleStore';
 import { useSummaryStore } from '../stores/useSummaryStore';
@@ -44,10 +46,13 @@ export const MeetingRoom: React.FC = () => {
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<'chat' | 'participants' | 'whiteboard' | 'polls' | 'recordings'>('chat');
+  const [showBlur, setShowBlur] = useState(false);
+  const [blurRegions, setBlurRegions] = useState<BlurRegion[]>([]);
   const [copied, setCopied] = useState(false);
   const [currentUserId, setCurrentUserId] = useState('');
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [screenShareStream, setScreenShareStream] = useState<MediaStream | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const processedStreamRef = useRef<MediaStream | null>(null);
@@ -62,6 +67,9 @@ export const MeetingRoom: React.FC = () => {
 
   // Use processed stream when virtual bg is active, otherwise raw stream
   const effectiveStream = virtualBgMode !== 'none' && processedStream ? processedStream : localStream;
+  const blurSourceStream = isScreenSharing ? screenShareStream : effectiveStream;
+  const privacyBlurStream = usePrivacyBlur(blurSourceStream, blurRegions, localStream);
+  const localPreviewStream = privacyBlurStream.outputStream || blurSourceStream;
 
   // Keep processedStreamRef in sync
   useEffect(() => {
@@ -72,7 +80,7 @@ export const MeetingRoom: React.FC = () => {
   const { isSubtitleEnabled, interimTranscript, toggleSubtitles } = useSubtitles(meetingId || '', userName, currentUserId);
   const { toggleSummaryModal } = useSummary();
   const { isWhiteboardOpen, toggleWhiteboard } = useWhiteboardStore();
-  const { isRecording, startRecording, stopRecording } = useMeetingRecording(meetingId || '', currentUserId, userName, localStream);
+  const { isRecording, startRecording, stopRecording } = useMeetingRecording(meetingId || '', currentUserId, userName, localPreviewStream || localStream);
 
   // Initialize local media stream
   useEffect(() => {
@@ -184,6 +192,7 @@ export const MeetingRoom: React.FC = () => {
         screenStreamRef.current.getTracks().forEach((t) => t.stop());
         screenStreamRef.current = null;
       }
+      setScreenShareStream(null);
       // Restore camera track from the effective stream (processed or raw)
       const streamToRestore = processedStreamRef.current || localStream;
       if (streamToRestore) {
@@ -205,6 +214,7 @@ export const MeetingRoom: React.FC = () => {
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
         screenStreamRef.current = screenStream;
+        setScreenShareStream(screenStream);
 
         const screenTrack = screenStream.getVideoTracks()[0];
         if (screenTrack) {
@@ -219,6 +229,7 @@ export const MeetingRoom: React.FC = () => {
               const track = streamToRestore.getVideoTracks()[0];
               if (track) replaceVideoTrack(track);
             }
+            setScreenShareStream(null);
             useMeetingStore.getState().toggleScreenShare();
           };
         }
@@ -235,8 +246,18 @@ export const MeetingRoom: React.FC = () => {
         screenStreamRef.current.getTracks().forEach((t) => t.stop());
         screenStreamRef.current = null;
       }
+      setScreenShareStream(null);
     };
   }, [isScreenSharing, localStream, replaceVideoTrack]);
+
+  useEffect(() => {
+    const replacementTrack = privacyBlurStream.outputStream?.getVideoTracks()[0]
+      || (isScreenSharing ? screenShareStream?.getVideoTracks()[0] : effectiveStream?.getVideoTracks()[0]);
+
+    if (replacementTrack) {
+      replaceVideoTrack(replacementTrack);
+    }
+  }, [effectiveStream, isScreenSharing, privacyBlurStream.outputStream, replaceVideoTrack, screenShareStream]);
 
   const handleLeave = useCallback(() => {
     setShowLeaveConfirm(true);
@@ -308,7 +329,7 @@ export const MeetingRoom: React.FC = () => {
     {
       userId: currentUserId,
       name: userName,
-      stream: isScreenSharing && screenStreamRef.current ? screenStreamRef.current : (effectiveStream || undefined),
+      stream: localPreviewStream || undefined,
       isMuted,
       isCameraOff: isScreenSharing ? false : isCameraOff,
       isScreenSharing,
@@ -372,6 +393,12 @@ export const MeetingRoom: React.FC = () => {
           )}
           <RemoteAudioPlayer streams={remoteStreams} />
           <SubtitleOverlay interimTranscript={interimTranscript} />
+          <BlurOverlay
+            isVisible={showBlur}
+            theme={theme}
+            regions={blurRegions}
+            onRegionsChange={setBlurRegions}
+          />
         </div>
 
         <SummaryModal />
@@ -449,15 +476,19 @@ export const MeetingRoom: React.FC = () => {
         onToggleParticipants={handleToggleParticipants}
         onLeave={handleLeave}
         chatOpen={sidebarOpen && sidebarTab === 'chat'}
+        isParticipantsOpen={sidebarOpen && sidebarTab === 'participants'}
         isSubtitleEnabled={isSubtitleEnabled}
         onToggleSubtitles={toggleSubtitles}
         onOpenSummary={toggleSummaryModal}
         isWhiteboardOpen={isWhiteboardOpen}
         onToggleWhiteboard={handleToggleWhiteboard}
+        isPollsOpen={sidebarOpen && sidebarTab === 'polls'}
         onTogglePolls={handleTogglePolls}
         isRecording={isRecording}
         onStartRecording={startRecording}
         onStopRecording={stopRecording}
+        isBlurActive={showBlur}
+        onToggleBlur={() => setShowBlur((v) => !v)}
       />
 
       <Modal isOpen={showLeaveConfirm} onClose={() => setShowLeaveConfirm(false)} title={t('leave.title')} maxWidth="max-w-sm">

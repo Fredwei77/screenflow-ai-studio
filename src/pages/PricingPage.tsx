@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, CircleAlert, Crown, Instagram, Mail, Phone, Sparkles, Users, X } from 'lucide-react';
+import { ArrowLeft, Check, CheckCircle2, CircleAlert, Clipboard, Crown, Instagram, Mail, Phone, Send, ShieldCheck, Sparkles, Users, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
-import { saveCommercialLead, trackCommercialIntent } from '../lib/commercialization';
+import { saveCommercialLead, trackCommercialIntent, type CommercialLead } from '../lib/commercialization';
 
 type Plan = {
   name: 'Free' | 'Pro' | 'Team';
@@ -25,12 +25,16 @@ export const PricingPage: React.FC = () => {
   const navigate = useNavigate();
   const [selectedPlan, setSelectedPlan] = useState<Plan['name']>('Pro');
   const [isLeadOpen, setIsLeadOpen] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [submittedLead, setSubmittedLead] = useState<CommercialLead | null>(null);
+  const [copiedNo, setCopiedNo] = useState(false);
   const [form, setForm] = useState({
     name: '',
     contact: '',
+    company: '',
+    role: '',
     teamSize: '1',
     useCase: t('pricing.lead.useCases.education'),
+    message: '',
   });
 
   const plans = useMemo<Plan[]>(() => [
@@ -83,7 +87,8 @@ export const PricingPage: React.FC = () => {
 
   const openLead = (plan: Plan['name']) => {
     setSelectedPlan(plan);
-    setSubmitted(false);
+    setSubmittedLead(null);
+    setCopiedNo(false);
     trackCommercialIntent('upgrade_click', { plan, source: 'pricing_page' });
     if (plan === 'Free') {
       navigate('/record');
@@ -94,12 +99,23 @@ export const PricingPage: React.FC = () => {
 
   const submitLead = (event: React.FormEvent) => {
     event.preventDefault();
-    saveCommercialLead({
+    const nextLead = saveCommercialLead({
       ...form,
       plan: selectedPlan,
       source: 'pricing_page',
     });
-    setSubmitted(true);
+    setSubmittedLead(nextLead);
+  };
+
+  const copyApplicationNo = async () => {
+    if (!submittedLead) return;
+    try {
+      await navigator.clipboard.writeText(submittedLead.applicationNo);
+      setCopiedNo(true);
+      window.setTimeout(() => setCopiedNo(false), 1800);
+    } catch {
+      setCopiedNo(false);
+    }
   };
 
   return (
@@ -204,30 +220,94 @@ export const PricingPage: React.FC = () => {
         </div>
       </footer>
 
-      <Modal isOpen={isLeadOpen} onClose={() => setIsLeadOpen(false)} title={t('pricing.lead.title', { plan: selectedPlan })} maxWidth="max-w-lg">
-        {submitted ? (
-          <div className="space-y-4">
-            <p className="text-gray-300">{t('pricing.lead.submitted')}</p>
-            <Button className="w-full" onClick={() => setIsLeadOpen(false)}>{t('pricing.lead.done')}</Button>
+      <Modal isOpen={isLeadOpen} onClose={() => setIsLeadOpen(false)} title={t('pricing.lead.title', { plan: selectedPlan })} maxWidth="max-w-2xl">
+        {submittedLead ? (
+          <div className="space-y-5">
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+              <div className="flex items-start gap-3">
+                <div className="rounded-lg bg-emerald-500 p-2 text-white">
+                  <CheckCircle2 className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-white">{t('pricing.lead.successTitle')}</h3>
+                  <p className="mt-1 text-sm leading-6 text-gray-300">{t('pricing.lead.successDesc')}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-gray-700 bg-gray-800/60 p-3">
+                <p className="text-xs text-gray-500">{t('pricing.lead.applicationNo')}</p>
+                <p className="mt-1 font-mono text-sm text-white">{submittedLead.applicationNo}</p>
+              </div>
+              <div className="rounded-xl border border-gray-700 bg-gray-800/60 p-3">
+                <p className="text-xs text-gray-500">{t('pricing.lead.status')}</p>
+                <p className="mt-1 text-sm font-semibold text-cyan-300">{t(`pricing.lead.statuses.${submittedLead.status}`)}</p>
+              </div>
+              <div className="rounded-xl border border-gray-700 bg-gray-800/60 p-3">
+                <p className="text-xs text-gray-500">{t('pricing.lead.plan')}</p>
+                <p className="mt-1 text-sm font-semibold text-white">{submittedLead.plan}</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-gray-700 bg-gray-950/50 p-4">
+              <h4 className="flex items-center gap-2 text-sm font-semibold text-white">
+                <ShieldCheck className="h-4 w-4 text-cyan-300" />
+                {t('pricing.lead.nextStepsTitle')}
+              </h4>
+              <div className="mt-3 space-y-2 text-sm leading-6 text-gray-300">
+                <p>{t('pricing.lead.nextStep1')}</p>
+                <p>{t('pricing.lead.nextStep2')}</p>
+                <p>{t('pricing.lead.nextStep3')}</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button className="flex-1" variant="secondary" onClick={copyApplicationNo} icon={<Clipboard className="h-4 w-4" />}>
+                {copiedNo ? t('common.copied') : t('pricing.lead.copyNo')}
+              </Button>
+              <Button className="flex-1" variant="secondary" onClick={() => setSubmittedLead(null)}>
+                {t('pricing.lead.editApplication')}
+              </Button>
+              <Button className="flex-1" onClick={() => navigate('/record')}>
+                {t('pricing.lead.tryNow')}
+              </Button>
+            </div>
           </div>
         ) : (
           <form onSubmit={submitLead} className="space-y-4">
-            <Input label={t('pricing.lead.name')} value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} required />
-            <Input label={t('pricing.lead.contact')} placeholder={t('pricing.lead.contactPlaceholder')} value={form.contact} onChange={(e) => setForm((v) => ({ ...v, contact: e.target.value }))} required />
-            <Input label={t('pricing.lead.teamSize')} value={form.teamSize} onChange={(e) => setForm((v) => ({ ...v, teamSize: e.target.value }))} />
+            <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-4 text-sm leading-6 text-gray-300">
+              {t('pricing.lead.formIntro')}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Input label={t('pricing.lead.name')} value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} required />
+              <Input label={t('pricing.lead.contact')} placeholder={t('pricing.lead.contactPlaceholder')} value={form.contact} onChange={(e) => setForm((v) => ({ ...v, contact: e.target.value }))} required />
+              <Input label={t('pricing.lead.company')} value={form.company} onChange={(e) => setForm((v) => ({ ...v, company: e.target.value }))} />
+              <Input label={t('pricing.lead.role')} value={form.role} onChange={(e) => setForm((v) => ({ ...v, role: e.target.value }))} />
+              <Input label={t('pricing.lead.teamSize')} type="number" min="1" value={form.teamSize} onChange={(e) => setForm((v) => ({ ...v, teamSize: e.target.value }))} />
+              <label className="block">
+                <span className="mb-1.5 block text-sm font-medium text-gray-300">{t('pricing.lead.useCase')}</span>
+                <select
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  value={form.useCase}
+                  onChange={(e) => setForm((v) => ({ ...v, useCase: e.target.value }))}
+                >
+                  {useCases.map((useCase) => (
+                    <option key={useCase}>{useCase}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-gray-300">{t('pricing.lead.useCase')}</span>
-              <select
-                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                value={form.useCase}
-                onChange={(e) => setForm((v) => ({ ...v, useCase: e.target.value }))}
-              >
-                {useCases.map((useCase) => (
-                  <option key={useCase}>{useCase}</option>
-                ))}
-              </select>
+              <span className="mb-1.5 block text-sm font-medium text-gray-300">{t('pricing.lead.message')}</span>
+              <textarea
+                className="min-h-24 w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2.5 text-sm text-white placeholder-gray-500 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder={t('pricing.lead.messagePlaceholder')}
+                value={form.message}
+                onChange={(e) => setForm((v) => ({ ...v, message: e.target.value }))}
+              />
             </label>
-            <Button className="w-full" type="submit">{t('pricing.lead.submit')}</Button>
+            <Button className="w-full" type="submit" icon={<Send className="h-4 w-4" />}>{t('pricing.lead.submit')}</Button>
           </form>
         )}
       </Modal>

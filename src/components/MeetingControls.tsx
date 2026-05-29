@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, MessageSquare, Users, Hand, LogOut, Circle, Subtitles, FileText, PenTool, BarChart3, SlidersHorizontal, Image } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, MonitorUp, MonitorOff, MessageSquare, Users, Hand, LogOut, Circle, Subtitles, FileText, PenTool, BarChart3, SlidersHorizontal, Image, EyeOff } from 'lucide-react';
 import { useMeetingStore } from '../stores/useMeetingStore';
 import { SubtitleSettings } from './SubtitleSettings';
 import { VirtualBackgroundSelector } from './VirtualBackgroundSelector';
@@ -14,12 +14,16 @@ interface MeetingControlsProps {
   onStartRecording?: () => void;
   onStopRecording?: () => void;
   chatOpen: boolean;
+  isParticipantsOpen?: boolean;
   isSubtitleEnabled?: boolean;
   onToggleSubtitles?: () => void;
   onOpenSummary?: () => void;
   isWhiteboardOpen?: boolean;
   onToggleWhiteboard?: () => void;
+  isPollsOpen?: boolean;
   onTogglePolls?: () => void;
+  isBlurActive?: boolean;
+  onToggleBlur?: () => void;
 }
 
 export const MeetingControls: React.FC<MeetingControlsProps> = ({
@@ -30,12 +34,16 @@ export const MeetingControls: React.FC<MeetingControlsProps> = ({
   onStartRecording,
   onStopRecording,
   chatOpen,
+  isParticipantsOpen,
   isSubtitleEnabled,
   onToggleSubtitles,
   onOpenSummary,
   isWhiteboardOpen,
   onToggleWhiteboard,
+  isPollsOpen,
   onTogglePolls,
+  isBlurActive,
+  onToggleBlur,
 }) => {
   const { t } = useTranslation();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -113,6 +121,14 @@ export const MeetingControls: React.FC<MeetingControlsProps> = ({
             label={isScreenSharing ? t('controls.stopShare') : t('controls.share')}
           />
         )}
+        {onToggleBlur && (
+          <ControlButton
+            onClick={onToggleBlur}
+            active={isBlurActive}
+            icon={<EyeOff className="w-5 h-5" />}
+            label={t('controls.blur')}
+          />
+        )}
         <ControlButton
           onClick={() => { toggleHandRaise(); }}
           active={isHandRaised}
@@ -167,6 +183,7 @@ export const MeetingControls: React.FC<MeetingControlsProps> = ({
         {onTogglePolls && (
           <ControlButton
             onClick={onTogglePolls}
+            active={isPollsOpen}
             icon={<BarChart3 className="w-5 h-5" />}
             label={t('meeting.polls')}
           />
@@ -189,6 +206,7 @@ export const MeetingControls: React.FC<MeetingControlsProps> = ({
         />
         <ControlButton
           onClick={onToggleParticipants}
+          active={isParticipantsOpen}
           icon={<Users className="w-5 h-5" />}
           label={t('meeting.people')}
         />

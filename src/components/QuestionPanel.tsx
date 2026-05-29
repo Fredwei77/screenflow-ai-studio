@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Question } from '../types';
-import { MessageCircle, Zap, HelpCircle, Lightbulb } from 'lucide-react';
+import { MessageCircle, Zap, HelpCircle, Lightbulb, AlertCircle } from 'lucide-react';
 
 interface QuestionPanelProps {
   questions: Question[];
@@ -24,6 +24,14 @@ const QuestionPanel: React.FC<QuestionPanelProps> = ({ questions, isProcessing }
       case 'clarification': return <HelpCircle className="w-4 h-4 text-blue-400" />;
       case 'creative': return <Lightbulb className="w-4 h-4 text-purple-400" />;
       default: return <MessageCircle className="w-4 h-4 text-green-400" />;
+    }
+  };
+
+  const getPriorityClass = (priority?: string) => {
+    switch (priority) {
+      case 'high': return 'border-red-500/40 bg-red-500/10 text-red-200';
+      case 'low': return 'border-gray-600 bg-gray-800/40 text-gray-400';
+      default: return 'border-indigo-500/30 bg-indigo-500/10 text-indigo-200';
     }
   };
 
@@ -55,10 +63,21 @@ const QuestionPanel: React.FC<QuestionPanelProps> = ({ questions, isProcessing }
               <div className="flex items-center gap-2 mb-2 text-xs uppercase tracking-wider text-gray-400 font-bold">
                 {getIcon(q.category)}
                 {q.category}
+                {q.priority && (
+                  <span className={`ml-auto rounded-full border px-2 py-0.5 text-[10px] normal-case tracking-normal ${getPriorityClass(q.priority)}`}>
+                    {q.priority}
+                  </span>
+                )}
               </div>
               <p className="text-lg text-white font-medium leading-relaxed">
                 {q.text}
               </p>
+              {q.rationale && (
+                <p className="mt-3 flex gap-2 text-xs leading-5 text-gray-400">
+                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-indigo-300" />
+                  {q.rationale}
+                </p>
+              )}
             </div>
           ))
         )}

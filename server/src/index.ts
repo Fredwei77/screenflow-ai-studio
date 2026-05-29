@@ -10,6 +10,7 @@ import { roomsRouter } from './routes/rooms.js';
 import { aiRouter } from './routes/ai.js';
 import { pollsRouter } from './routes/polls.js';
 import { recordingsRouter } from './routes/recordings.js';
+import { publishRouter } from './routes/publish.js';
 import { setupSocketHandlers, initSfuWorker } from './socket/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -40,6 +41,7 @@ app.use('/api/rooms', roomsRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/polls', pollsRouter);
 app.use('/api/recordings', recordingsRouter);
+app.use('/api/publish', publishRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => {

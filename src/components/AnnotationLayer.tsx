@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Pencil, Circle, ArrowRight, Eraser, Trash2, Highlighter, Undo2, Redo2 } from 'lucide-react';
+import { Pencil, Circle, ArrowRight, Eraser, Trash2, Highlighter, Undo2, Redo2, EyeOff } from 'lucide-react';
 
-export type AnnotationTool = 'pen' | 'highlight' | 'arrow' | 'circle' | 'laser' | 'eraser';
+export type AnnotationTool = 'pen' | 'highlight' | 'arrow' | 'circle' | 'laser' | 'eraser' | 'blur';
 
 interface Point {
   x: number;
@@ -16,6 +16,15 @@ interface Annotation {
   strokeWidth: number;
   startPoint?: Point;
   endPoint?: Point;
+}
+
+interface BlurRegion {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  intensity: number;
 }
 
 interface AnnotationLayerProps {
@@ -45,6 +54,7 @@ const CURSOR_STYLES: Record<AnnotationTool, string> = {
   circle: 'crosshair',
   laser: 'none',
   eraser: 'pointer',
+  blur: 'crosshair',
 };
 
 export const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
@@ -61,6 +71,8 @@ export const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
   const [isDrawing, setIsDrawing] = useState(false);
   const [laserPosition, setLaserPosition] = useState<Point | null>(null);
   const [laserTrail, setLaserTrail] = useState<Point[]>([]);
+  const [blurRegions, setBlurRegions] = useState<BlurRegion[]>([]);
+  const [blurUndoStack, setBlurUndoStack] = useState<BlurRegion[][]>([]);
   const svgRef = useRef<SVGSVGElement>(null);
   const laserTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -76,6 +88,7 @@ export const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
         '4': 'circle',
         '5': 'laser',
         '6': 'eraser',
+        '7': 'blur',
       };
 
       if (toolMap[e.key]) {
@@ -130,26 +143,96 @@ export const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
     };
   }, []);
 
-  const handleUndo = useCallback(() => {
-    setAnnotations((prev) => {
+  const handleBlurUndo = useCallback(() => {
+    setBlurRegions((prev) => {
       if (prev.length === 0) return prev;
-      setUndoStack((stack) => [...stack, prev]);
+      setBlurUndoStack((stack) => [...stack, prev]);
       return prev.slice(0, -1);
     });
   }, []);
 
-  const handleRedo = useCallback(() => {
-    setUndoStack((prev) => {
+  const handleBlurRedo = useCallback(() => {
+    setBlurUndoStack((prev) => {
       if (prev.length === 0) return prev;
       const lastState = prev[prev.length - 1];
-      setAnnotations(lastState);
+      setBlurRegions(lastState);
       return prev.slice(0, -1);
     });
   }, []);
+
+  const handleUndo = useCallback(() => {
+    if (activeTool === 'blur' || (activeTool === 'eraser' && blurRegions.length > 0 && (annotations.length === 0 || blurRegions.length >= annotations.length))) {
+      handleBlurUndo();
+    } else if (undoStack.length > 0) {
+      setAnnotations((prev) => {
+        if (prev.length === 0) return prev;
+        setUndoStack((stack) => [...stack, prev]);
+        return prev.slice(0, -1);
+      });
+    }
+  }, [activeTool, blurRegions.length, annotations.length, undoStack.length, handleBlurUndo]);
+
+  const handleRedo = useCallback(() => {
+    if (activeTool === 'blur' || (activeTool === 'eraser' && blurUndoStack.length > 0 && (undoStack.length === 0 || blurUndoStack.length >= undoStack.length))) {
+      handleBlurRedo();
+    } else if (undoStack.length > 0) {
+      setUndoStack((prev) => {
+        if (prev.length === 0) return prev;
+        const lastState = prev[prev.length - 1];
+        setAnnotations(lastState);
+        return prev.slice(0, -1);
+      });
+    }
+  }, [activeTool, blurUndoStack.length, undoStack.length, handleBlurRedo]);
+
+  const handleBlurErase = useCallback(
+    (regionId: string) => {
+      if (activeTool === 'eraser') {
+        setBlurUndoStack((prev) => [...prev, blurRegions]);
+        setBlurRegions((prev) => prev.filter((r) => r.id !== regionId));
+      }
+    },
+    [activeTool, blurRegions]
+  );
+
+  const handleBlurClick = useCallback(
+    (e: React.PointerEvent) => {
+      const overlay = svgRef.current?.parentElement;
+      if (!overlay) return;
+      overlay.style.pointerEvents = 'none';
+      const elementUnder = document.elementFromPoint(e.clientX, e.clientY);
+      overlay.style.pointerEvents = '';
+
+      if (!elementUnder || elementUnder === overlay) return;
+
+      const overlayRect = overlay.getBoundingClientRect();
+      const targetRect = elementUnder.getBoundingClientRect();
+
+      const x = Math.max(0, targetRect.left - overlayRect.left);
+      const y = Math.max(0, targetRect.top - overlayRect.top);
+      const width = Math.min(targetRect.width, overlayRect.width - x);
+      const height = Math.min(targetRect.height, overlayRect.height - y);
+
+      if (width < 10 || height < 10) return;
+
+      const newRegion: BlurRegion = {
+        id: crypto.randomUUID(),
+        x, y, width, height, intensity: 12,
+      };
+
+      setBlurUndoStack((prev) => [...prev, blurRegions]);
+      setBlurRegions((prev) => [...prev, newRegion]);
+    },
+    [blurRegions]
+  );
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (activeTool === 'eraser') return;
+      if (activeTool === 'blur') {
+        handleBlurClick(e);
+        return;
+      }
 
       const point = getPoint(e);
       setIsDrawing(true);
@@ -167,7 +250,7 @@ export const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
       setCurrentAnnotation(newAnnotation);
       setUndoStack([]);
     },
-    [activeTool, activeColor, activeStrokeWidth, getPoint]
+    [activeTool, activeColor, activeStrokeWidth, getPoint, handleBlurClick]
   );
 
   const handlePointerMove = useCallback(
@@ -222,7 +305,11 @@ export const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
     setUndoStack((prev) => [...prev, annotations]);
     setAnnotations([]);
     setCurrentAnnotation(null);
-  }, [annotations]);
+    if (blurRegions.length > 0) {
+      setBlurUndoStack((prev) => [...prev, blurRegions]);
+      setBlurRegions([]);
+    }
+  }, [annotations, blurRegions]);
 
   const renderAnnotation = useCallback(
     (annotation: Annotation, isEraserTarget = false) => {
@@ -334,6 +421,7 @@ export const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
               label: '5',
             },
             { tool: 'eraser' as AnnotationTool, icon: Eraser, label: '6' },
+            { tool: 'blur' as AnnotationTool, icon: EyeOff, label: '7' },
           ]).map(({ tool, icon: Icon, label }) => (
             <button
               key={tool}
@@ -355,7 +443,7 @@ export const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
         <div className={`h-px ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'}`} />
 
         {/* Color Picker */}
-        {activeTool !== 'laser' && activeTool !== 'eraser' && (
+        {activeTool !== 'laser' && activeTool !== 'eraser' && activeTool !== 'blur' && (
           <div className="flex flex-wrap gap-1 w-[72px]">
             {PRESET_COLORS.map((color) => (
               <button
@@ -372,7 +460,7 @@ export const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
         )}
 
         {/* Stroke Width */}
-        {activeTool !== 'laser' && activeTool !== 'eraser' && (
+        {activeTool !== 'laser' && activeTool !== 'eraser' && activeTool !== 'blur' && (
           <div className="flex flex-col gap-1">
             {STROKE_WIDTHS.map((width) => (
               <button
@@ -413,9 +501,9 @@ export const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
         <div className="flex gap-1">
           <button
             onClick={handleUndo}
-            disabled={annotations.length === 0}
+            disabled={annotations.length === 0 && blurRegions.length === 0}
             className={`p-2 rounded-lg transition-all ${
-              annotations.length === 0
+              annotations.length === 0 && blurRegions.length === 0
                 ? 'opacity-30 cursor-not-allowed'
                 : theme === 'dark'
                 ? 'text-gray-400 hover:text-white hover:bg-gray-800'
@@ -427,9 +515,9 @@ export const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
           </button>
           <button
             onClick={handleRedo}
-            disabled={undoStack.length === 0}
+            disabled={undoStack.length === 0 && blurUndoStack.length === 0}
             className={`p-2 rounded-lg transition-all ${
-              undoStack.length === 0
+              undoStack.length === 0 && blurUndoStack.length === 0
                 ? 'opacity-30 cursor-not-allowed'
                 : theme === 'dark'
                 ? 'text-gray-400 hover:text-white hover:bg-gray-800'
@@ -444,9 +532,9 @@ export const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
         {/* Clear All */}
         <button
           onClick={clearAllAnnotations}
-          disabled={annotations.length === 0}
+          disabled={annotations.length === 0 && blurRegions.length === 0}
           className={`p-2 rounded-lg transition-all ${
-            annotations.length === 0
+            annotations.length === 0 && blurRegions.length === 0
               ? 'opacity-30 cursor-not-allowed'
               : theme === 'dark'
               ? 'text-red-400 hover:text-red-300 hover:bg-gray-800'
@@ -509,6 +597,23 @@ export const AnnotationLayer: React.FC<AnnotationLayerProps> = ({
           </filter>
         </defs>
       </svg>
+
+      {/* Blur Regions */}
+      {blurRegions.map((region) => (
+        <div
+          key={region.id}
+          className={`absolute ${activeTool === 'eraser' ? 'cursor-pointer hover:ring-2 hover:ring-red-400' : ''}`}
+          style={{
+            left: region.x,
+            top: region.y,
+            width: region.width,
+            height: region.height,
+            backdropFilter: `blur(${region.intensity}px)`,
+            WebkitBackdropFilter: `blur(${region.intensity}px)`,
+          }}
+          onClick={() => handleBlurErase(region.id)}
+        />
+      ))}
     </div>
   );
 };

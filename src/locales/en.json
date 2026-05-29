@@ -89,14 +89,35 @@
     },
     "lead": {
       "title": "{{plan}} Interest Form",
-      "submitted": "Your trial or purchase interest has been recorded locally. It can later connect to a backend CRM or analytics system.",
-      "done": "Done",
+      "formIntro": "Submitting creates a beta application number for review, follow-up, and future CRM sync. This version stores it locally first.",
+      "successTitle": "Application submitted",
+      "successDesc": "Your Pro beta application has been recorded. Keep the application number for status checks or CRM sync later.",
+      "applicationNo": "Application No.",
+      "status": "Status",
+      "plan": "Plan",
+      "copyNo": "Copy Number",
+      "editApplication": "Edit Details",
+      "tryNow": "Try Recording",
+      "nextStepsTitle": "What happens next",
+      "nextStep1": "1. The application and commercial intent event are saved to the local lead pool.",
+      "nextStep2": "2. Once a backend is connected, the application number, contact, team size, and use case can sync to CRM.",
+      "nextStep3": "3. After approval, Pro features, Team plans, or private deployment support can be enabled by application number.",
       "name": "Name / Team Name",
       "contact": "Contact",
       "contactPlaceholder": "WeChat, phone, or email",
+      "company": "Company / Organization",
+      "role": "Role",
       "teamSize": "Team Size",
       "useCase": "Use Case",
+      "message": "Notes",
+      "messagePlaceholder": "For example: recording frequency, expected users, or Pro features you need first",
       "submit": "Submit Interest",
+      "statuses": {
+        "submitted": "Submitted",
+        "reviewing": "Reviewing",
+        "approved": "Approved",
+        "rejected": "Rejected"
+      },
       "useCases": {
         "education": "Online education / course recording",
         "training": "Corporate training",
@@ -132,7 +153,8 @@
     "record": "Record",
     "stopRec": "Stop Rec",
     "leave": "Leave",
-    "bg": "Background"
+    "bg": "Background",
+    "blur": "Blur"
   },
   "chat": {
     "noMessages": "No messages yet",
@@ -341,7 +363,8 @@
       "arrow": "Arrow",
       "circle": "Circle",
       "laser": "Laser Pointer",
-      "eraser": "Eraser"
+      "eraser": "Eraser",
+    "blur": "Click to Blur"
     },
     "clearAll": "Clear All Annotations"
   },

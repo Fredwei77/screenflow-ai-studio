@@ -1,7 +1,7 @@
 import React, { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { RecorderState, Question, AnalysisMetric, type MediaSourceType, type LayoutMode } from '../types';
+import { RecorderState, Question, AnalysisMetric, RecordingAnalysis, type MediaSourceType, type LayoutMode } from '../types';
 import Recorder from '../components/Recorder';
 import QuestionPanel from '../components/QuestionPanel';
 import PerformanceChart from '../components/PerformanceChart';
@@ -12,6 +12,7 @@ import BackdropLibrary from '../components/BackdropLibrary';
 import OnboardingWizard from '../components/OnboardingWizard';
 import LayoutSelector from '../components/LayoutSelector';
 import AnnotationLayer from '../components/AnnotationLayer';
+import { BlurOverlay, type BlurRegion } from '../components/BlurOverlay';
 import CoverGenerator from '../components/CoverGenerator';
 import PublishDashboard from '../components/PublishDashboard';
 import { Modal } from '../components/ui/Modal';
@@ -23,17 +24,43 @@ import { useRecording } from '../hooks/useRecording';
 import { useAudioLevel } from '../hooks/useAudioLevel';
 import { useTeleprompter } from '../hooks/useTeleprompter';
 import { useVirtualBackground } from '../hooks/useVirtualBackground';
+import { usePrivacyBlur } from '../hooks/usePrivacyBlur';
 import { useStreamCompositor, type PiPPosition } from '../hooks/useStreamCompositor';
 import { useTheme } from '../hooks/useTheme';
 import { useMeetingStore, type BackgroundMode } from '../stores/useMeetingStore';
 import { aiApi } from '../services/api';
 import { config } from '../config';
-import { trackCommercialIntent } from '../lib/commercialization';
+import { hasProBetaAccess, trackCommercialIntent } from '../lib/commercialization';
 import { formatDuration } from '../lib/formatters';
 import { downloadFile, transcriptToSRT, transcriptToVTT, splitTextIntoSegments } from '../utils/subtitles';
-import { Mic, Monitor, Camera, Square, Play, Download, Settings2, Moon, Sun, ArrowLeft, Image, Film, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Pencil, Upload, Crown, Lock } from 'lucide-react';
+import { Mic, Monitor, Camera, Square, Play, Download, Settings2, Moon, Sun, ArrowLeft, Image, Film, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Pencil, Upload, Crown, Lock, EyeOff, UserRound, Move } from 'lucide-react';
 
 const VideoEditor = React.lazy(() => import('../components/VideoEditor'));
+
+const getPresenterPosition = (
+  layout: LayoutMode,
+  canvasWidth: number,
+  canvasHeight: number,
+  presenterScale: number,
+  corner: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right' = 'bottom-left',
+): PiPPosition => {
+  const margin = Math.max(Math.min(canvasWidth, canvasHeight) * 0.025, 16);
+
+  if (layout === 'floating-camera') {
+    const radius = Math.min(canvasWidth, canvasHeight) * 0.08 * presenterScale;
+    return {
+      x: corner.endsWith('left') ? Math.max(canvasWidth - radius * 2 - margin * 2, 0) : margin,
+      y: corner.startsWith('top') ? Math.max(canvasHeight - radius * 2 - margin * 2, 0) : margin,
+    };
+  }
+
+  const pipWidth = canvasWidth * 0.22 * presenterScale;
+  const pipHeight = canvasHeight * 0.22 * presenterScale;
+  return {
+    x: corner.endsWith('left') ? Math.max(canvasWidth - pipWidth - margin, 0) : margin,
+    y: corner.startsWith('top') ? Math.max(canvasHeight - pipHeight - margin, 0) : margin,
+  };
+};
 
 export const RecordPage: React.FC = () => {
   const { t } = useTranslation();
@@ -47,12 +74,14 @@ export const RecordPage: React.FC = () => {
   const detectBestLayout = useCallback((source: MediaSourceType): LayoutMode => {
     if (source === 'screen') return 'screen-only';
     if (source === 'camera') return 'camera-only';
-    return 'pip';
+    return 'floating-camera';
   }, []);
   const [layoutMode, setLayoutMode] = useState<LayoutMode>(() => detectBestLayout('camera'));
   const [pipPosition, setPipPosition] = useState<PiPPosition>({ x: 16, y: 16 });
   const [sideBySideRatio, setSideBySideRatio] = useState(0.35);
   const [previewBounds, setPreviewBounds] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const [presenterCorner, setPresenterCorner] = useState<'bottom-left' | 'bottom-right' | 'top-left' | 'top-right'>('bottom-left');
+  const [presenterScale, setPresenterScale] = useState(1.35);
   const previewRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef<
     | { type: 'pip'; startX: number; startY: number; startOffsetX: number; startOffsetY: number }
@@ -60,14 +89,32 @@ export const RecordPage: React.FC = () => {
     | null
   >(null);
   const { outputStream: compositedStream, compositorState } = useStreamCompositor(
-    cameraStream, screenStream, layoutMode, pipPosition, 25, sideBySideRatio,
+    cameraStream, screenStream, layoutMode, pipPosition, 30, sideBySideRatio, presenterScale,
   );
-  const compositorOutput = compositedStream || stream;
+  const [compositorOutputWithAudio, setCompositorOutputWithAudio] = useState<MediaStream | null>(null);
+  const compositorOutput = compositorOutputWithAudio || compositedStream || stream;
+
+  useEffect(() => {
+    if (!compositedStream) {
+      setCompositorOutputWithAudio(null);
+      return;
+    }
+
+    const mixedStream = new MediaStream([
+      ...compositedStream.getVideoTracks(),
+      ...(stream?.getAudioTracks() || []),
+    ]);
+    setCompositorOutputWithAudio(mixedStream);
+  }, [compositedStream, stream]);
 
   // Sync layout to media source changes
   useEffect(() => {
-    setLayoutMode(detectBestLayout(mediaSource));
-  }, [mediaSource, detectBestLayout]);
+    const nextLayout = detectBestLayout(mediaSource);
+    setLayoutMode(nextLayout);
+    if (mediaSource === 'both') {
+      setPipPosition(getPresenterPosition(nextLayout, compositorState.canvasWidth, compositorState.canvasHeight, presenterScale, presenterCorner));
+    }
+  }, [compositorState.canvasHeight, compositorState.canvasWidth, detectBestLayout, mediaSource, presenterCorner, presenterScale]);
 
   useEffect(() => {
     if (!cameraStream && layoutMode !== 'screen-only') {
@@ -104,6 +151,8 @@ export const RecordPage: React.FC = () => {
 
   // Annotation layer
   const [showAnnotations, setShowAnnotations] = useState(false);
+  const [showPrivacyBlur, setShowPrivacyBlur] = useState(false);
+  const [privacyBlurRegions, setPrivacyBlurRegions] = useState<BlurRegion[]>([]);
 
   // Cover generator
   const [showCoverGenerator, setShowCoverGenerator] = useState(false);
@@ -115,6 +164,7 @@ export const RecordPage: React.FC = () => {
     title: string;
     description: string;
   } | null>(null);
+  const [hasProAccess, setHasProAccess] = useState(() => hasProBetaAccess());
 
   const { virtualBgMode, setVirtualBgMode, setVirtualBgImageUrl } = useMeetingStore();
   const processedStream = useVirtualBackground(compositorOutput, {
@@ -122,7 +172,9 @@ export const RecordPage: React.FC = () => {
     imageUrl: backdropImageUrl || undefined,
     blurRadius: 12,
   });
-  const displayStream = (virtualBgMode !== 'none' && processedStream) ? processedStream : compositorOutput;
+  const baseDisplayStream = (virtualBgMode !== 'none' && processedStream) ? processedStream : compositorOutput;
+  const privacyBlurStream = usePrivacyBlur(baseDisplayStream, privacyBlurRegions, stream);
+  const displayStream = privacyBlurStream.outputStream || baseDisplayStream;
 
   useEffect(() => {
     const updatePreviewBounds = () => {
@@ -177,6 +229,7 @@ export const RecordPage: React.FC = () => {
   });
   const [isAiProcessing, setIsAiProcessing] = useState(false);
   const [performanceData, setPerformanceData] = useState<AnalysisMetric[]>([]);
+  const [recordingAnalysis, setRecordingAnalysis] = useState<RecordingAnalysis | null>(null);
 
   const lastAnalyzedLengthRef = useRef(0);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -192,6 +245,25 @@ export const RecordPage: React.FC = () => {
     });
     setUpgradeIntent({ feature, title, description });
   }, []);
+
+  useEffect(() => {
+    const refreshProAccess = () => setHasProAccess(hasProBetaAccess());
+    refreshProAccess();
+    window.addEventListener('focus', refreshProAccess);
+    window.addEventListener('storage', refreshProAccess);
+    return () => {
+      window.removeEventListener('focus', refreshProAccess);
+      window.removeEventListener('storage', refreshProAccess);
+    };
+  }, []);
+
+  const requireProAccess = useCallback((feature: string, title: string, description: string, onAllowed: () => void) => {
+    if (hasProAccess) {
+      onAllowed();
+      return;
+    }
+    openUpgradeIntent(feature, title, description);
+  }, [hasProAccess, openUpgradeIntent]);
 
   // Init camera on mount
   useEffect(() => { initCamera(); }, [initCamera]);
@@ -226,14 +298,33 @@ export const RecordPage: React.FC = () => {
     try {
       const recentContext = fullSessionText.slice(-400);
       const result = await aiApi.generateQuestion(recentContext, 'professional');
-      if (result?.text) {
-        setQuestions((prev) => [...prev, { id: crypto.randomUUID(), text: result.text, category: result.category || 'support', timestamp: Date.now() }]);
+      const nextQuestions = Array.isArray(result?.items)
+        ? result.items
+        : result?.text
+        ? [result]
+        : [];
+      if (nextQuestions.length > 0) {
+        setQuestions((prev) => [
+          ...prev,
+          ...nextQuestions.map((item: Partial<Question>) => ({
+            id: item.id || crypto.randomUUID(),
+            text: item.text || '',
+            category: item.category || 'support',
+            priority: item.priority || 'medium',
+            rationale: item.rationale || '',
+            timestamp: item.timestamp || Date.now(),
+          })).filter((item: Question) => !!item.text),
+        ].slice(-12));
       }
       lastAnalyzedLengthRef.current = fullSessionText.length;
 
       if (fullSessionText.length > 200 && fullSessionText.length % 500 < 50) {
-        const perf = await aiApi.analyzePerformance(fullSessionText.slice(-500));
-        if (Array.isArray(perf)) setPerformanceData(perf);
+        const analysis = await aiApi.analyzePerformance(fullSessionText.slice(-900));
+        const metrics = Array.isArray(analysis) ? analysis : analysis?.metrics;
+        if (Array.isArray(metrics)) {
+          setPerformanceData(metrics);
+          if (!Array.isArray(analysis)) setRecordingAnalysis(analysis);
+        }
       }
     } catch (e) {
       lastAnalyzedLengthRef.current = fullSessionText.length;
@@ -268,6 +359,8 @@ export const RecordPage: React.FC = () => {
       startVisualization(recordingStream);
       startRecognition();
       setQuestions([]);
+      setPerformanceData([]);
+      setRecordingAnalysis(null);
       lastAnalyzedLengthRef.current = 0;
     }
   };
@@ -278,7 +371,11 @@ export const RecordPage: React.FC = () => {
     stopVisualization();
     if (fullSessionText.length > 50) {
       aiApi.analyzePerformance(fullSessionText).then((data) => {
-        if (Array.isArray(data)) setPerformanceData(data);
+        const metrics = Array.isArray(data) ? data : data?.metrics;
+        if (Array.isArray(metrics)) {
+          setPerformanceData(metrics);
+          if (!Array.isArray(data)) setRecordingAnalysis(data);
+        }
       }).catch(() => {});
     }
   };
@@ -337,6 +434,63 @@ export const RecordPage: React.FC = () => {
     }
   }, []);
 
+  const enablePresenterOverlay = useCallback(async () => {
+    if (recorderState === RecorderState.RECORDING) return;
+    const nextLayout: LayoutMode = 'floating-camera';
+    setPresenterCorner('bottom-left');
+    setLayoutMode(nextLayout);
+    setPipPosition(getPresenterPosition(nextLayout, compositorState.canvasWidth, compositorState.canvasHeight, presenterScale, 'bottom-left'));
+    if (mediaSource !== 'both') {
+      await switchMediaSource('both');
+    }
+  }, [compositorState.canvasHeight, compositorState.canvasWidth, mediaSource, presenterScale, recorderState, switchMediaSource]);
+
+  const disablePresenterOverlay = useCallback(async () => {
+    if (recorderState === RecorderState.RECORDING) return;
+    setLayoutMode('screen-only');
+    await switchMediaSource('screen');
+  }, [recorderState, switchMediaSource]);
+
+  const setPresenterPreset = useCallback((corner: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right') => {
+    setPresenterCorner(corner);
+    setPipPosition(getPresenterPosition(layoutMode, compositorState.canvasWidth, compositorState.canvasHeight, presenterScale, corner));
+  }, [compositorState.canvasHeight, compositorState.canvasWidth, layoutMode, presenterScale]);
+
+  const updatePresenterScale = useCallback((scale: number) => {
+    setPresenterScale(scale);
+    setPipPosition(getPresenterPosition(layoutMode, compositorState.canvasWidth, compositorState.canvasHeight, scale, presenterCorner));
+  }, [compositorState.canvasHeight, compositorState.canvasWidth, layoutMode, presenterCorner]);
+
+  const getPresenterPreviewStyle = useCallback((): React.CSSProperties | null => {
+    if (!previewBounds || !compositorState.canvasWidth || !compositorState.canvasHeight) return null;
+
+    const scaleX = previewBounds.width / Math.max(compositorState.canvasWidth, 1);
+    const scaleY = previewBounds.height / Math.max(compositorState.canvasHeight, 1);
+
+    if (layoutMode === 'floating-camera') {
+      const radius = Math.min(compositorState.canvasWidth, compositorState.canvasHeight) * 0.08 * presenterScale;
+      const cx = compositorState.canvasWidth - radius - pipPosition.x - 20;
+      const cy = compositorState.canvasHeight - radius - pipPosition.y - 20;
+      return {
+        left: previewBounds.left + (cx - radius) * scaleX,
+        top: previewBounds.top + (cy - radius) * scaleY,
+        width: radius * 2 * scaleX,
+        height: radius * 2 * scaleY,
+        borderRadius: '999px',
+      };
+    }
+
+    const pipWidth = compositorState.canvasWidth * 0.22 * presenterScale;
+    const pipHeight = compositorState.canvasHeight * 0.22 * presenterScale;
+    return {
+      left: previewBounds.left + (compositorState.canvasWidth - pipWidth - pipPosition.x) * scaleX,
+      top: previewBounds.top + (compositorState.canvasHeight - pipHeight - pipPosition.y) * scaleY,
+      width: pipWidth * scaleX,
+      height: pipHeight * scaleY,
+      borderRadius: '16px',
+    };
+  }, [compositorState.canvasHeight, compositorState.canvasWidth, layoutMode, pipPosition.x, pipPosition.y, presenterScale, previewBounds]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -361,7 +515,12 @@ export const RecordPage: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && recorderState !== RecorderState.RECORDING) {
         if (e.key === '1') { e.preventDefault(); switchMediaSource('screen'); setLayoutMode('screen-only'); }
         if (e.key === '2') { e.preventDefault(); switchMediaSource('camera'); setLayoutMode('camera-only'); }
-        if (e.key === '3') { e.preventDefault(); switchMediaSource('both'); setLayoutMode('pip'); }
+        if (e.key === '3') {
+          e.preventDefault();
+          switchMediaSource('both');
+          setLayoutMode('floating-camera');
+          setPresenterPreset('bottom-left');
+        }
       }
       // Layout shortcuts (Ctrl+Shift+1..5)
       if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
@@ -374,7 +533,7 @@ export const RecordPage: React.FC = () => {
     };
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [cameraStream, downloadUrl, error, recorderState, screenStream, stream, switchMediaSource, teleprompter]);
+  }, [cameraStream, downloadUrl, error, recorderState, screenStream, setPresenterPreset, stream, switchMediaSource, teleprompter]);
 
   // Backdrop handlers
   const handleBackdropSelect = useCallback((imageUrl: string | null) => {
@@ -394,23 +553,27 @@ export const RecordPage: React.FC = () => {
   // Subtitle export handlers
   const handleExportSRT = useCallback(() => {
     if (!fullSessionText || recordingDuration <= 0) return;
-    openUpgradeIntent('subtitle_export_srt', '字幕导出属于 Pro 功能', '升级后可以把录制转写导出为 SRT 字幕，用于剪映、Premiere、B 站和课程平台。');
-    return;
+    if (!hasProAccess) {
+      openUpgradeIntent('subtitle_export_srt', '字幕导出属于 Pro 功能', '升级后可以把录制转写导出为 SRT 字幕，用于剪映、Premiere、B 站和课程平台。');
+      return;
+    }
     const lang = config.speechLanguage || 'en-US';
     const segments = splitTextIntoSegments(fullSessionText, recordingDuration * 1000, lang);
     const srt = transcriptToSRT(segments);
     downloadFile(srt, `recording-${Date.now()}.srt`, 'text/plain');
-  }, [fullSessionText, openUpgradeIntent, recordingDuration]);
+  }, [fullSessionText, hasProAccess, openUpgradeIntent, recordingDuration]);
 
   const handleExportVTT = useCallback(() => {
     if (!fullSessionText || recordingDuration <= 0) return;
-    openUpgradeIntent('subtitle_export_vtt', '字幕导出属于 Pro 功能', '升级后可以把字幕导出为 VTT，便于上传到网站、课程平台或企业知识库。');
-    return;
+    if (!hasProAccess) {
+      openUpgradeIntent('subtitle_export_vtt', '字幕导出属于 Pro 功能', '升级后可以把字幕导出为 VTT，便于上传到网站、课程平台或企业知识库。');
+      return;
+    }
     const lang = config.speechLanguage || 'en-US';
     const segments = splitTextIntoSegments(fullSessionText, recordingDuration * 1000, lang);
     const vtt = transcriptToVTT(segments);
     downloadFile(vtt, `recording-${Date.now()}.vtt`, 'text/vtt');
-  }, [fullSessionText, openUpgradeIntent, recordingDuration]);
+  }, [fullSessionText, hasProAccess, openUpgradeIntent, recordingDuration]);
 
   // Onboarding handlers
   const handleOnboardingComplete = useCallback((source: MediaSourceType, backdropUrl: string | null) => {
@@ -471,6 +634,13 @@ export const RecordPage: React.FC = () => {
           >
             <Pencil className="w-4 h-4" />
           </button>
+          <button
+            onClick={() => setShowPrivacyBlur((value) => !value)}
+            className={`p-2 rounded-md transition-all ${showPrivacyBlur ? 'bg-cyan-600 text-white' : theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'}`}
+            title="Click to blur sensitive text, images, inputs, or areas"
+          >
+            <EyeOff className="w-4 h-4" />
+          </button>
           <KeyboardShortcuts theme={theme} />
           <LayoutSelector
             currentLayout={layoutMode}
@@ -480,6 +650,71 @@ export const RecordPage: React.FC = () => {
             theme={theme}
             disabled={recorderState === RecorderState.RECORDING}
           />
+          <button
+            onClick={mediaSource === 'both' ? disablePresenterOverlay : enablePresenterOverlay}
+            disabled={recorderState === RecorderState.RECORDING}
+            className={`hidden sm:inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition-all ${
+              mediaSource === 'both'
+                ? 'border-cyan-400/50 bg-cyan-500/15 text-cyan-100'
+                : theme === 'dark'
+                ? 'border-gray-700 bg-gray-800 text-gray-300 hover:text-white'
+                : 'border-gray-300 bg-gray-100 text-gray-700 hover:text-gray-900'
+            } ${recorderState === RecorderState.RECORDING ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title="共享窗口时加入圆形人像解说"
+          >
+            <UserRound className="h-4 w-4" />
+            人像解说
+          </button>
+          {mediaSource === 'both' && (layoutMode === 'pip' || layoutMode === 'floating-camera') && compositorState.isCompositing && (
+            <div className={`hidden sm:flex items-center gap-1 rounded-lg border p-1 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-300'}`}>
+              <Move className="h-3.5 w-3.5 text-gray-500" />
+              {([
+                ['bottom-left', '左下'],
+                ['bottom-right', '右下'],
+                ['top-left', '左上'],
+                ['top-right', '右上'],
+              ] as const).map(([corner, label]) => (
+                <button
+                  key={corner}
+                  onClick={() => setPresenterPreset(corner)}
+                  className={`rounded px-1.5 py-1 text-[10px] transition-colors ${
+                    presenterCorner === corner
+                      ? 'bg-indigo-600 text-white'
+                      : theme === 'dark'
+                      ? 'text-gray-400 hover:text-white'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  title={`人像位置：${label}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+          {mediaSource === 'both' && (layoutMode === 'pip' || layoutMode === 'floating-camera') && compositorState.isCompositing && (
+            <div className={`hidden sm:flex items-center gap-1 rounded-lg border p-1 ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-300'}`}>
+              {([
+                [1, '小'],
+                [1.35, '中'],
+                [1.7, '大'],
+              ] as const).map(([scale, label]) => (
+                <button
+                  key={scale}
+                  onClick={() => updatePresenterScale(scale)}
+                  className={`rounded px-2 py-1 text-[10px] transition-colors ${
+                    Math.abs(presenterScale - scale) < 0.01
+                      ? 'bg-indigo-600 text-white'
+                      : theme === 'dark'
+                      ? 'text-gray-400 hover:text-white'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                  title={`人像大小：${label}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
           {/* PiP position nudge */}
           {(layoutMode === 'pip' || layoutMode === 'floating-camera') && compositorState.isCompositing && (
             <div className={`hidden sm:flex rounded-lg p-0.5 border gap-px ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-300'}`}>
@@ -511,7 +746,12 @@ export const RecordPage: React.FC = () => {
               const handleSourceChange = () => {
                 const src = type as MediaSourceType;
                 switchMediaSource(src);
-                setLayoutMode(detectBestLayout(src));
+                const nextLayout = detectBestLayout(src);
+                setLayoutMode(nextLayout);
+                if (src === 'both') {
+                  setPresenterCorner('bottom-left');
+                  setPipPosition(getPresenterPosition(nextLayout, compositorState.canvasWidth, compositorState.canvasHeight, presenterScale, 'bottom-left'));
+                }
               };
               return (
                 <button key={type} onClick={handleSourceChange} className={`p-2 rounded-md transition-all ${mediaSource === type ? 'bg-indigo-600 text-white shadow-lg' : theme === 'dark' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`} title={`${type} (Ctrl+${type === 'screen' ? '1' : type === 'camera' ? '2' : '3'})`} disabled={recorderState === RecorderState.RECORDING}>
@@ -532,6 +772,12 @@ export const RecordPage: React.FC = () => {
               isVisible={showAnnotations}
               theme={theme}
             />
+            <BlurOverlay
+              isVisible={showPrivacyBlur}
+              theme={theme}
+              regions={privacyBlurRegions}
+              onRegionsChange={setPrivacyBlurRegions}
+            />
             {previewBounds && compositorState.isCompositing && (
               <div
                 className="absolute inset-0 z-10"
@@ -542,14 +788,7 @@ export const RecordPage: React.FC = () => {
                 {(layoutMode === 'pip' || layoutMode === 'floating-camera') && (
                   <div
                     className="absolute cursor-move rounded-xl border border-dashed border-cyan-300/80 bg-cyan-400/10 backdrop-blur-[1px]"
-                    style={{
-                      left: previewBounds.left + previewBounds.width * 0.72,
-                      top: previewBounds.top + previewBounds.height * 0.68,
-                      width: previewBounds.width * (layoutMode === 'pip' ? 0.22 : 0.18),
-                      height: previewBounds.height * (layoutMode === 'pip' ? 0.22 : 0.18),
-                      transform: `translate(${-pipPosition.x * (previewBounds.width / Math.max(compositorState.canvasWidth, 1))}px, ${-pipPosition.y * (previewBounds.height / Math.max(compositorState.canvasHeight, 1))}px)`,
-                      borderRadius: layoutMode === 'floating-camera' ? '999px' : '16px',
-                    }}
+                    style={getPresenterPreviewStyle() || undefined}
                     onPointerDown={startPiPDrag}
                     title={t('layout.dragPip')}
                   >
@@ -638,13 +877,13 @@ export const RecordPage: React.FC = () => {
             <div className="flex justify-end gap-2">
               {downloadUrl && (
                 <>
-                  <button onClick={() => openUpgradeIntent('video_editor', '视频剪辑属于 Pro 功能', '升级后可以裁剪录制片段、添加背景音乐、烧录字幕并导出成品视频。')} className="text-cyan-400 hover:text-cyan-300 flex flex-col items-center gap-1 text-xs" title={t('editor.title')}>
+                  <button onClick={() => requireProAccess('video_editor', '视频剪辑属于 Pro 功能', '升级后可以裁剪录制片段、添加背景音乐、烧录字幕并导出成品视频。', () => setShowVideoEditor(true))} className="text-cyan-400 hover:text-cyan-300 flex flex-col items-center gap-1 text-xs" title={t('editor.title')}>
                     <Film className="w-5 h-5 sm:w-6 sm:h-6" /> {t('editor.edit')}
                   </button>
-                  <button onClick={() => openUpgradeIntent('cover_generator', 'AI 封面生成属于 Pro 功能', '升级后可以基于录制视频快速生成课程封面、培训封面和社媒封面。')} className="text-purple-400 hover:text-purple-300 flex flex-col items-center gap-1 text-xs" title="Generate Cover">
+                  <button onClick={() => requireProAccess('cover_generator', 'AI 封面生成属于 Pro 功能', '升级后可以基于录制视频快速生成课程封面、培训封面和社媒封面。', () => setShowCoverGenerator(true))} className="text-purple-400 hover:text-purple-300 flex flex-col items-center gap-1 text-xs" title="Generate Cover">
                     <Image className="w-5 h-5 sm:w-6 sm:h-6" /> Cover
                   </button>
-                  <button onClick={() => openUpgradeIntent('social_publish', '多平台发布属于 Pro 功能', '升级后可以把录制内容整理为发布素材，并追踪创作者和培训团队的发布需求。')} className="text-green-400 hover:text-green-300 flex flex-col items-center gap-1 text-xs" title="Publish to Social Media">
+                  <button onClick={() => requireProAccess('social_publish', '多平台发布属于 Pro 功能', '升级后可以把录制内容整理为发布素材，并追踪创作者和培训团队的发布需求。', () => setShowPublishDashboard(true))} className="text-green-400 hover:text-green-300 flex flex-col items-center gap-1 text-xs" title="Publish to Social Media">
                     <Upload className="w-5 h-5 sm:w-6 sm:h-6" /> Publish
                   </button>
                   <button onClick={downloadVideo} className="text-indigo-400 hover:text-indigo-300 flex flex-col items-center gap-1 text-xs" title={t('recording.download')}>
@@ -663,8 +902,8 @@ export const RecordPage: React.FC = () => {
               <h3 className="text-sm font-semibold text-gray-400">{t('recording.analysis')}</h3>
               <span className="text-xs text-green-500">{t('recording.active')}</span>
             </div>
-            <div className="flex-1 relative">
-              {performanceData.length > 0 ? <PerformanceChart data={performanceData} /> : <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-sm">{t('recording.speakToGenerate')}</div>}
+            <div className="flex-1 min-h-0 relative">
+              {performanceData.length > 0 ? <PerformanceChart data={performanceData} analysis={recordingAnalysis} /> : <div className="absolute inset-0 flex items-center justify-center text-gray-600 text-sm">{t('recording.speakToGenerate')}</div>}
             </div>
           </div>
         </aside>

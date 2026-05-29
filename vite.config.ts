@@ -15,6 +15,10 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0',
     proxy: {
+      '/meet/api': {
+        target: 'http://localhost:4000',
+        rewrite: (path) => path.replace(/^\/meet/, ''),
+      },
       '/api': {
         target: 'http://localhost:4000',
         rewrite: (path) => path.replace(/^\/meet/, ''),

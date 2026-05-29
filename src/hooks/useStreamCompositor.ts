@@ -18,13 +18,42 @@ interface UseStreamCompositorReturn {
   compositorState: CompositorState;
 }
 
+const drawVideoCover = (
+  ctx: CanvasRenderingContext2D,
+  video: HTMLVideoElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+) => {
+  const sourceWidth = video.videoWidth || width;
+  const sourceHeight = video.videoHeight || height;
+  const sourceRatio = sourceWidth / sourceHeight;
+  const targetRatio = width / height;
+  let sx = 0;
+  let sy = 0;
+  let sw = sourceWidth;
+  let sh = sourceHeight;
+
+  if (sourceRatio > targetRatio) {
+    sw = sourceHeight * targetRatio;
+    sx = (sourceWidth - sw) / 2;
+  } else {
+    sh = sourceWidth / targetRatio;
+    sy = (sourceHeight - sh) / 2;
+  }
+
+  ctx.drawImage(video, sx, sy, sw, sh, x, y, width, height);
+};
+
 export const useStreamCompositor = (
   cameraStream: MediaStream | null,
   screenStream: MediaStream | null,
   layoutMode: LayoutMode,
   pipPosition: PiPPosition,
   fps?: number,
-  sideBySideRatio?: number
+  sideBySideRatio?: number,
+  presenterScale = 1
 ): UseStreamCompositorReturn => {
   const [outputStream, setOutputStream] = useState<MediaStream | null>(null);
   const [compositorState, setCompositorState] = useState<CompositorState>({
@@ -119,15 +148,17 @@ export const useStreamCompositor = (
 
         switch (layoutMode) {
           case 'pip': {
-            const pipW = canvas.width * 0.22;
-            const pipH = canvas.height * 0.22;
+            const pipW = canvas.width * 0.22 * presenterScale;
+            const pipH = canvas.height * 0.22 * presenterScale;
             const pipX = canvas.width - pipW - pipPosition.x;
             const pipY = canvas.height - pipH - pipPosition.y;
             ctx.save();
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
             ctx.beginPath();
             ctx.roundRect(pipX, pipY, pipW, pipH, 12);
             ctx.clip();
-            ctx.drawImage(cameraVideoRef.current, pipX, pipY, pipW, pipH);
+            drawVideoCover(ctx, cameraVideoRef.current, pipX, pipY, pipW, pipH);
             ctx.restore();
             ctx.strokeStyle = 'rgba(6, 182, 212, 0.8)';
             ctx.lineWidth = 2;
@@ -139,21 +170,25 @@ export const useStreamCompositor = (
           case 'side-by-side': {
             const camW = canvas.width * ratio;
             const screenW = canvas.width * (1 - ratio);
-            ctx.drawImage(cameraVideoRef.current, 0, 0, camW, canvas.height);
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            drawVideoCover(ctx, cameraVideoRef.current, 0, 0, camW, canvas.height);
             if (screenVideoRef.current && screenVideoRef.current.readyState >= 2) {
               ctx.drawImage(screenVideoRef.current, camW, 0, screenW, canvas.height);
             }
             break;
           }
           case 'floating-camera': {
-            const r = Math.min(canvas.width, canvas.height) * 0.08;
+            const r = Math.min(canvas.width, canvas.height) * 0.08 * presenterScale;
             const cx = canvas.width - r - pipPosition.x - 20;
             const cy = canvas.height - r - pipPosition.y - 20;
             ctx.save();
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
             ctx.beginPath();
             ctx.arc(cx, cy, r, 0, Math.PI * 2);
             ctx.clip();
-            ctx.drawImage(cameraVideoRef.current, cx - r, cy - r, r * 2, r * 2);
+            drawVideoCover(ctx, cameraVideoRef.current, cx - r, cy - r, r * 2, r * 2);
             ctx.restore();
             ctx.strokeStyle = 'rgba(6, 182, 212, 0.8)';
             ctx.lineWidth = 3;
@@ -175,7 +210,7 @@ export const useStreamCompositor = (
         cancelAnimationFrame(animFrameRef.current);
       }
     };
-  }, [needsCompositing, screenStream, cameraStream, layoutMode, pipPosition, fps, sideBySideRatio]);
+  }, [needsCompositing, screenStream, cameraStream, layoutMode, pipPosition, fps, sideBySideRatio, presenterScale]);
 
   return { outputStream, compositorState };
 };

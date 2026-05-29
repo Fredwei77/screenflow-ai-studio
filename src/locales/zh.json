@@ -88,14 +88,35 @@
     },
     "lead": {
       "title": "{{plan}} 意向申请",
-      "submitted": "已记录你的试用/购买意向。当前数据保存在本地，后续可以直接接入后端 CRM 或埋点系统。",
-      "done": "完成",
+      "formIntro": "提交后会生成内测申请编号，便于后续审核、联系和接入 CRM。当前版本先保存在本机。",
+      "successTitle": "申请已提交",
+      "successDesc": "我们已记录你的 Pro 内测申请。请保存申请编号，后续可用于查询审核进度或同步到 CRM。",
+      "applicationNo": "申请编号",
+      "status": "审核状态",
+      "plan": "申请方案",
+      "copyNo": "复制编号",
+      "editApplication": "修改资料",
+      "tryNow": "先去体验录制",
+      "nextStepsTitle": "接下来会发生什么",
+      "nextStep1": "1. 系统已把申请资料和商业意向事件写入本地线索池。",
+      "nextStep2": "2. 接入后端后，可直接把申请编号、联系方式、团队规模和使用场景同步到 CRM。",
+      "nextStep3": "3. 审核通过后可按编号开放 Pro 功能、团队版或私有化部署支持。",
       "name": "姓名/团队名称",
       "contact": "联系方式",
       "contactPlaceholder": "微信、手机号或邮箱",
+      "company": "公司/机构",
+      "role": "职位/角色",
       "teamSize": "团队人数",
       "useCase": "使用场景",
+      "message": "补充说明",
+      "messagePlaceholder": "例如：预计录课频率、团队使用人数、需要优先开放的 Pro 功能",
       "submit": "提交意向",
+      "statuses": {
+        "submitted": "已提交",
+        "reviewing": "审核中",
+        "approved": "已通过",
+        "rejected": "未通过"
+      },
       "useCases": {
         "education": "在线教学/录课",
         "training": "企业培训/内训",
@@ -130,7 +151,8 @@
     "record": "录制",
     "stopRec": "停止录制",
     "leave": "离开",
-    "bg": "虚拟背景"
+    "bg": "虚拟背景",
+    "blur": "模糊"
   },
   "chat": {
     "noMessages": "暂无消息",
@@ -332,7 +354,8 @@
       "arrow": "箭头",
       "circle": "圆圈",
       "laser": "激光笔",
-      "eraser": "橡皮擦"
+      "eraser": "橡皮擦",
+    "blur": "点击模糊"
     },
     "clearAll": "清除所有标注"
   },

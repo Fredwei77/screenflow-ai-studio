@@ -28,12 +28,23 @@ export interface Question {
   text: string;
   timestamp: number;
   category: 'deep-dive' | 'clarification' | 'creative' | 'support';
+  priority?: 'low' | 'medium' | 'high';
+  rationale?: string;
 }
 
 export interface AnalysisMetric {
   name: string;
   value: number;
   fullMark: number;
+}
+
+export interface RecordingAnalysis {
+  metrics: AnalysisMetric[];
+  overallScore: number;
+  strengths: string[];
+  improvements: string[];
+  pacing: string;
+  summary: string;
 }
 
 export type MediaSourceType = 'screen' | 'camera' | 'both';
@@ -104,6 +115,17 @@ export interface DrawStroke {
   points: DrawPoint[];
   userId: string;
   userName: string;
+}
+
+// ==================== Blur ====================
+
+export interface BlurRegion {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  intensity: number;
 }
 
 // ==================== Polls ====================

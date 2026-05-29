@@ -87,11 +87,16 @@ async function callOpenRouter(messages: any[], retries = 2, timeoutMs = 15000): 
 }
 
 export async function generateQuestion(context: string, tone: string) {
-  const systemPrompt = `You are an expert interviewer and supportive co-host.
+  const systemPrompt = `You are an expert course recording co-pilot and supportive host.
 The user is recording a video presentation.
-Task: Generate ONE short, insightful follow-up question to help them continue talking.
+Task: Generate 3 short, insightful follow-up prompts to help them continue talking.
 Tone: ${tone}.
-IMPORTANT: Output valid JSON only. Format: {"text": "The question", "category": "deep-dive|clarification|creative|support"}`;
+IMPORTANT: Output valid JSON only. Format:
+{
+  "items": [
+    {"text": "The prompt", "category": "deep-dive|clarification|creative|support", "priority": "low|medium|high", "rationale": "why this helps"}
+  ]
+}`;
 
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -99,23 +104,53 @@ IMPORTANT: Output valid JSON only. Format: {"text": "The question", "category": 
   ];
 
   const content = await callOpenRouter(messages);
-  if (!content) return null;
+  if (!content) {
+    return {
+      items: [
+        {
+          id: crypto.randomUUID(),
+          text: 'Can you give a concrete example to make this point easier to follow?',
+          category: 'support',
+          priority: 'medium',
+          rationale: 'Examples keep course recordings practical and easier to understand.',
+          timestamp: Date.now(),
+        },
+      ],
+    };
+  }
 
   const data = cleanAndParseJSON(content);
-  if (!data?.text) return null;
+  const items = Array.isArray(data?.items)
+    ? data.items
+    : data?.text
+    ? [data]
+    : [];
 
   return {
-    id: crypto.randomUUID(),
-    text: data.text,
-    category: data.category || 'support',
-    timestamp: Date.now(),
+    items: items.slice(0, 3).map((item: any) => ({
+      id: crypto.randomUUID(),
+      text: item.text,
+      category: item.category || 'support',
+      priority: item.priority || 'medium',
+      rationale: item.rationale || '',
+      timestamp: Date.now(),
+    })).filter((item: any) => !!item.text),
   };
 }
 
 export async function analyzePerformance(transcript: string) {
-  const systemPrompt = `Analyze this speech for a presentation.
-Rate 3 metrics 0-100: Clarity, Engagement, Structure.
-Output ONLY a JSON array: [{"name":"Clarity","value":85,"fullMark":100},...]`;
+  const systemPrompt = `Analyze this course-recording speech.
+Rate 5 metrics 0-100: Clarity, Engagement, Structure, Pacing, Actionability.
+Return concise coaching feedback for a teacher/trainer.
+Output ONLY valid JSON:
+{
+  "overallScore": 82,
+  "metrics": [{"name":"Clarity","value":85,"fullMark":100}],
+  "strengths": ["..."],
+  "improvements": ["..."],
+  "pacing": "short pacing observation",
+  "summary": "one sentence summary"
+}`;
 
   const messages = [
     { role: 'system', content: systemPrompt },
@@ -124,19 +159,44 @@ Output ONLY a JSON array: [{"name":"Clarity","value":85,"fullMark":100},...]`;
 
   const content = await callOpenRouter(messages);
   if (!content) {
-    return [
-      { name: 'Clarity', value: 75, fullMark: 100 },
-      { name: 'Engagement', value: 70, fullMark: 100 },
-      { name: 'Structure', value: 80, fullMark: 100 },
-    ];
+    return {
+      overallScore: 76,
+      metrics: [
+        { name: 'Clarity', value: 78, fullMark: 100 },
+        { name: 'Engagement', value: 72, fullMark: 100 },
+        { name: 'Structure', value: 76, fullMark: 100 },
+        { name: 'Pacing', value: 74, fullMark: 100 },
+        { name: 'Actionability', value: 80, fullMark: 100 },
+      ],
+      strengths: ['内容已经形成可理解的主线。'],
+      improvements: ['可以增加一个具体案例，并在段落结尾总结关键结论。'],
+      pacing: '语速和信息密度整体适中，注意给重点概念留出停顿。',
+      summary: '这段录课内容具备基础表达质量，适合继续补充案例和结构化总结。',
+    };
   }
 
   let result = cleanAndParseJSON(content);
   if (result && !Array.isArray(result) && typeof result === 'object') {
-    const arr = Object.values(result).find((v) => Array.isArray(v));
-    if (arr) result = arr;
+    const metrics = Array.isArray(result.metrics)
+      ? result.metrics
+      : Object.values(result).find((v) => Array.isArray(v));
+    return {
+      overallScore: Number(result.overallScore) || 0,
+      metrics: Array.isArray(metrics) ? metrics : [],
+      strengths: Array.isArray(result.strengths) ? result.strengths : [],
+      improvements: Array.isArray(result.improvements) ? result.improvements : [],
+      pacing: typeof result.pacing === 'string' ? result.pacing : '',
+      summary: typeof result.summary === 'string' ? result.summary : '',
+    };
   }
-  return Array.isArray(result) ? result : [];
+  return {
+    overallScore: 0,
+    metrics: Array.isArray(result) ? result : [],
+    strengths: [],
+    improvements: [],
+    pacing: '',
+    summary: '',
+  };
 }
 
 export async function generateMeetingSummary(transcript: string) {

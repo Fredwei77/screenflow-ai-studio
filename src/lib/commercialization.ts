@@ -12,17 +12,26 @@ export interface CommercialIntentEvent {
 
 export interface CommercialLead {
   id: string;
+  applicationNo: string;
   name: string;
   contact: string;
   teamSize: string;
   useCase: string;
+  company?: string;
+  role?: string;
+  message?: string;
   plan: string;
   source: string;
+  status: 'submitted' | 'reviewing' | 'approved' | 'rejected';
   createdAt: string;
+  updatedAt: string;
 }
 
 const EVENTS_KEY = 'screenflow-commercial-intents';
 const LEADS_KEY = 'screenflow-commercial-leads';
+const ACTIVE_PRO_STATUSES: CommercialLead['status'][] = ['submitted', 'reviewing', 'approved'];
+
+const createApplicationNo = () => `SFAI-${Date.now().toString(36).toUpperCase()}`;
 
 const readArray = <T,>(key: string): T[] => {
   try {
@@ -30,6 +39,30 @@ const readArray = <T,>(key: string): T[] => {
   } catch {
     return [];
   }
+};
+
+const normalizeLead = (lead: Partial<CommercialLead>): CommercialLead => {
+  const now = new Date().toISOString();
+  const status = (['submitted', 'reviewing', 'approved', 'rejected'] as const).includes(lead.status as CommercialLead['status'])
+    ? lead.status as CommercialLead['status']
+    : 'submitted';
+
+  return {
+    id: lead.id || crypto.randomUUID(),
+    applicationNo: lead.applicationNo || createApplicationNo(),
+    name: lead.name || '',
+    contact: lead.contact || '',
+    company: lead.company || '',
+    role: lead.role || '',
+    teamSize: lead.teamSize || '1',
+    useCase: lead.useCase || '',
+    message: lead.message || '',
+    plan: lead.plan || 'Pro',
+    source: lead.source || 'unknown',
+    status,
+    createdAt: lead.createdAt || now,
+    updatedAt: lead.updatedAt || lead.createdAt || now,
+  };
 };
 
 export const trackCommercialIntent = (
@@ -50,19 +83,48 @@ export const trackCommercialIntent = (
 };
 
 export const saveCommercialLead = (
-  lead: Omit<CommercialLead, 'id' | 'createdAt'>,
+  lead: Omit<CommercialLead, 'id' | 'applicationNo' | 'status' | 'createdAt' | 'updatedAt'>,
 ) => {
+  const leads = readArray<Partial<CommercialLead>>(LEADS_KEY).map(normalizeLead);
+  const existingIndex = leads.findIndex((item) =>
+    item.plan === lead.plan &&
+    item.contact.trim().toLowerCase() === lead.contact.trim().toLowerCase()
+  );
+  const now = new Date().toISOString();
+
   const nextLead: CommercialLead = {
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
+    id: existingIndex >= 0 ? leads[existingIndex].id : crypto.randomUUID(),
+    applicationNo: existingIndex >= 0 ? leads[existingIndex].applicationNo : createApplicationNo(),
+    status: existingIndex >= 0 ? leads[existingIndex].status : 'submitted',
+    createdAt: existingIndex >= 0 ? leads[existingIndex].createdAt : now,
+    updatedAt: now,
     ...lead,
   };
 
-  const leads = readArray<CommercialLead>(LEADS_KEY);
-  localStorage.setItem(LEADS_KEY, JSON.stringify([nextLead, ...leads].slice(0, 100)));
+  const nextLeads = existingIndex >= 0
+    ? [nextLead, ...leads.filter((_, index) => index !== existingIndex)]
+    : [nextLead, ...leads];
+
+  localStorage.setItem(LEADS_KEY, JSON.stringify(nextLeads.slice(0, 100)));
   trackCommercialIntent('lead_submit', {
     plan: lead.plan,
     source: lead.source,
   });
   return nextLead;
 };
+
+export const getCommercialLeads = () => {
+  const normalized = readArray<Partial<CommercialLead>>(LEADS_KEY).map(normalizeLead);
+  localStorage.setItem(LEADS_KEY, JSON.stringify(normalized.slice(0, 100)));
+  return normalized;
+};
+
+export const getLatestCommercialLead = (plan?: string) => {
+  const leads = getCommercialLeads();
+  return plan ? leads.find((lead) => lead.plan === plan) : leads[0];
+};
+
+export const hasProBetaAccess = () =>
+  getCommercialLeads().some((lead) =>
+    (lead.plan === 'Pro' || lead.plan === 'Team') && ACTIVE_PRO_STATUSES.includes(lead.status)
+  );

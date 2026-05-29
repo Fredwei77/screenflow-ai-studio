@@ -43,7 +43,12 @@ export const useSocialPublish = (): UseSocialPublishReturn => {
     setIsLoading(true);
     setError(null);
     try {
-      const { authUrl } = await publishApi.connectAccount(platform);
+      const { authUrl, account } = await publishApi.connectAccount(platform);
+      if (account) {
+        setAccounts((prev) => [account, ...prev.filter((item) => item.platform !== account.platform)]);
+      } else {
+        await fetchAccounts();
+      }
       return authUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to connect account');
@@ -51,7 +56,7 @@ export const useSocialPublish = (): UseSocialPublishReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [fetchAccounts]);
 
   const disconnectAccount = useCallback(async (accountId: string) => {
     setIsLoading(true);

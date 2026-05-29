@@ -27,6 +27,7 @@ const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ theme = 'dark' })
     { key: 'Ctrl + 1', description: t('shortcuts.switchToScreen') },
     { key: 'Ctrl + 2', description: t('shortcuts.switchToCamera') },
     { key: 'Ctrl + 3', description: t('shortcuts.switchToBoth') },
+    { key: '7', description: t('annotation.tools.blur') },
   ];
 
   return (

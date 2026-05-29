@@ -199,7 +199,9 @@ export const PublishDashboard: React.FC<PublishDashboardProps> = ({
     async (platform: SocialPlatform) => {
       try {
         const authUrl = await connectAccount(platform);
-        window.open(authUrl, '_blank');
+        if (authUrl.startsWith('http')) {
+          window.open(authUrl, '_blank', 'noopener,noreferrer');
+        }
       } catch (err) {
         console.error('Failed to connect:', err);
       }
@@ -209,9 +211,13 @@ export const PublishDashboard: React.FC<PublishDashboardProps> = ({
 
   const handlePublish = useCallback(async () => {
     if (selectedPlatforms.length === 0) return;
-    await publishToMultiple(selectedPlatforms, content);
+    await publishToMultiple(selectedPlatforms, {
+      ...content,
+      coverUrl,
+      videoUrl: content.videoUrl || (videoBlob ? `local-recording-${videoBlob.size}.webm` : ''),
+    });
     clearDraft();
-  }, [selectedPlatforms, content, publishToMultiple]);
+  }, [coverUrl, selectedPlatforms, content, publishToMultiple, videoBlob]);
 
   const handleClearDraft = useCallback(() => {
     clearDraft();
