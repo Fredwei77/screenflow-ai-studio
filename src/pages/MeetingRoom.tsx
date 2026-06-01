@@ -29,6 +29,7 @@ import { supportsGetDisplayMedia } from '../utils/browser';
 import { useTheme } from '../hooks/useTheme';
 import { Copy, Check, X, LogOut } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
+import { chatApi } from '../services/api';
 
 export const MeetingRoom: React.FC = () => {
   const { t } = useTranslation();
@@ -42,6 +43,7 @@ export const MeetingRoom: React.FC = () => {
 
   const { participants, localStream, setLocalStream, remoteStreams, isMuted, isCameraOff, isScreenSharing, isHandRaised, reset, virtualBgMode, virtualBgColor, virtualBgImageUrl } = useMeetingStore();
   const addMessage = useChatStore((s) => s.addMessage);
+  const setMessages = useChatStore((s) => s.setMessages);
   const clearMessages = useChatStore((s) => s.clearMessages);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -76,7 +78,9 @@ export const MeetingRoom: React.FC = () => {
     processedStreamRef.current = effectiveStream;
   }, [effectiveStream]);
 
-  const { joinRoom: sfuJoinRoom, cleanupAll, replaceVideoTrack } = useWebRTC(effectiveStream);
+  // SFU publishes the raw media stream once. Background changes replace only
+  // the video track below so the microphone producer is not recreated.
+  const { joinRoom: sfuJoinRoom, cleanupAll, replaceVideoTrack } = useWebRTC(localStream);
   const { isSubtitleEnabled, interimTranscript, toggleSubtitles } = useSubtitles(meetingId || '', userName, currentUserId);
   const { toggleSummaryModal } = useSummary();
   const { isWhiteboardOpen, toggleWhiteboard } = useWhiteboardStore();
@@ -124,9 +128,11 @@ export const MeetingRoom: React.FC = () => {
     if (!meetingId) return;
 
     const socket = getSocket();
-
     const handleRoomJoined = (data: { userId: string; participants: any[] }) => {
       setCurrentUserId(data.userId);
+      chatApi.getMessages(meetingId).then(setMessages).catch((error) => {
+        console.error('Failed to load chat messages:', error);
+      });
     };
 
     const handleChatMessage = (msg: any) => {
@@ -449,7 +455,7 @@ export const MeetingRoom: React.FC = () => {
               ) : sidebarTab === 'whiteboard' ? (
                 <WhiteboardPanel meetingId={meetingId || ''} userId={currentUserId} userName={userName} onClose={() => { setSidebarOpen(false); useWhiteboardStore.getState().setWhiteboardOpen(false); }} />
               ) : sidebarTab === 'polls' ? (
-                <PollPanel meetingId={meetingId || ''} userId={currentUserId} userName={userName} onClose={() => setSidebarOpen(false)} />
+                <PollPanel meetingId={meetingId || ''} userId={currentUserId} userName={userName} onClose={() => setSidebarOpen(false)} isHost={isHost} />
               ) : sidebarTab === 'recordings' ? (
                 <div className="flex flex-col h-full">
                   <div className="flex items-center justify-between px-3 py-2 bg-gray-800 border-b border-gray-700">

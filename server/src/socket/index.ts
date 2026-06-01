@@ -136,12 +136,20 @@ export function setupSocketHandlers(io: Server) {
         participants: Array.from(roomMembers.values()),
       });
 
-      // Ensure room exists in DB (fire-and-forget, not blocking)
-      prisma.room.upsert({
-        where: { meetingId },
-        create: { meetingId, name: `Meeting ${meetingId}`, hostId: currentUserId },
-        update: {},
-      }).catch((e: any) => console.error('Failed to upsert room in DB:', e));
+      // Ensure REST-backed features can use the room as soon as room-joined is emitted.
+      // The first participant becomes the room host for anonymous meeting flows.
+      try {
+        await prisma.room.upsert({
+          where: { meetingId },
+          create: { meetingId, name: `Meeting ${meetingId}`, hostId: currentUserId },
+          update: {},
+        });
+      } catch (e) {
+        console.error('Failed to upsert room in DB:', e);
+        socket.emit('room-error', { message: 'Failed to initialize room' });
+        handleLeave(socket, meetingId);
+        return;
+      }
 
       console.log(`${currentUserName} joined room ${meetingId} (${roomMembers.size} total)`);
 
@@ -329,35 +337,55 @@ export function setupSocketHandlers(io: Server) {
     // ============================================================
     // Chat message (preserved)
     // ============================================================
-    socket.on('chat:message', async ({ roomId, content }: { roomId: string; content: string }) => {
-      if (roomId !== currentRoom) return;
-      if (!content || typeof content !== 'string' || content.length > 2000) return;
-      const message = {
+    socket.on('chat:message', async (
+      { roomId, content }: { roomId: string; content: string },
+      callback?: (result: { ok?: boolean; message?: string }) => void
+    ) => {
+      if (roomId !== currentRoom) {
+        callback?.({ message: 'Not in this room' });
+        return;
+      }
+      if (!content || typeof content !== 'string') {
+        callback?.({ message: 'Message is required' });
+        return;
+      }
+      const cleanContent = content.trim();
+      if (!cleanContent || cleanContent.length > 2000) {
+        callback?.({ message: 'Message must be between 1 and 2000 characters' });
+        return;
+      }
+      let message: { id: string; content: string; userId: string; userName: string; roomId: string; createdAt: string } = {
         id: crypto.randomUUID(),
-        content,
+        content: cleanContent,
         userId: currentUserId,
         userName: currentUserName,
         roomId,
         createdAt: new Date().toISOString(),
       };
 
-      io.to(roomId).emit('chat:message', message);
-
       try {
         const room = await prisma.room.findUnique({ where: { meetingId: roomId } });
         if (room) {
-          await prisma.chatMessage.create({
+          const savedMessage = await prisma.chatMessage.create({
             data: {
-              content,
+              content: cleanContent,
               userId: currentUserId,
               userName: currentUserName,
               roomId: room.id,
             },
           });
+          message = {
+            ...message,
+            id: savedMessage.id,
+            createdAt: savedMessage.createdAt.toISOString(),
+          };
         }
       } catch (e) {
         console.error('Failed to save chat message:', e);
       }
+
+      io.to(roomId).emit('chat:message', message);
+      callback?.({ ok: true });
     });
 
     // ============================================================
@@ -397,19 +425,45 @@ export function setupSocketHandlers(io: Server) {
     // Poll events (preserved)
     // ============================================================
     socket.on('poll:created', ({ meetingId, poll }: { meetingId: string; poll: any }) => {
+      if (meetingId !== currentRoom) return;
       socket.to(meetingId).emit('poll:created', poll);
     });
 
     socket.on('poll:vote', ({ meetingId, pollId, userId, userName, optionIdx }: { meetingId: string; pollId: string; userId: string; userName: string; optionIdx: number }) => {
-      socket.to(meetingId).emit('poll:vote', { pollId, userId, userName, optionIdx });
+      if (meetingId !== currentRoom || userId !== currentUserId) return;
+      socket.to(meetingId).emit('poll:vote', { pollId, userId: currentUserId, userName: currentUserName, optionIdx });
     });
 
-    socket.on('poll:closed', ({ meetingId, pollId }: { meetingId: string; pollId: string }) => {
-      if (!['TEACHER', 'ADMIN', 'TA'].includes(currentRole)) {
-        socket.emit('error', { message: 'Only hosts can close polls' });
+    socket.on('poll:close', async (
+      { meetingId, pollId }: { meetingId: string; pollId: string },
+      callback: (result: { ok?: boolean; message?: string }) => void
+    ) => {
+      if (meetingId !== currentRoom) {
+        callback({ message: 'Not in this room' });
         return;
       }
-      socket.to(meetingId).emit('poll:closed', pollId);
+
+      try {
+        const room = await prisma.room.findUnique({ where: { meetingId } });
+        const canClose = room?.hostId === currentUserId || ['TEACHER', 'ADMIN', 'TA'].includes(currentRole);
+        if (!room || !canClose) {
+          callback({ message: 'Only hosts can close polls' });
+          return;
+        }
+
+        const poll = await prisma.poll.findFirst({ where: { id: pollId, roomId: room.id } });
+        if (!poll) {
+          callback({ message: 'Poll not found' });
+          return;
+        }
+
+        await prisma.poll.update({ where: { id: pollId }, data: { isActive: false } });
+        io.to(meetingId).emit('poll:closed', pollId);
+        callback({ ok: true });
+      } catch (error) {
+        console.error('Close poll error:', error);
+        callback({ message: 'Failed to close poll' });
+      }
     });
 
     // ============================================================

@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { usePollStore } from '../stores/usePollStore';
 import { pollApi } from '../services/api';
-import { sendPollCreated, sendPollVote, getSocket } from '../services/socket';
+import { closePoll as closePollSocket, sendPollCreated, sendPollVote, getSocket } from '../services/socket';
 import type { PollWithVotes, Vote } from '../types';
 
 export function usePolling(meetingId: string, userId: string, userName: string) {
@@ -69,14 +69,7 @@ export function usePolling(meetingId: string, userId: string, userName: string) 
 
   const vote = useCallback(async (pollId: string, optionIdx: number) => {
     try {
-      await pollApi.vote(pollId, userId, userName, optionIdx);
-      const voteData: Vote = {
-        id: crypto.randomUUID(),
-        pollId,
-        userId,
-        userName,
-        optionIdx,
-      };
+      const voteData = await pollApi.vote(pollId, userId, userName, optionIdx);
       addVote(pollId, voteData);
       sendPollVote(meetingId, { pollId, userId, userName, optionIdx });
     } catch (err) {
@@ -87,10 +80,8 @@ export function usePolling(meetingId: string, userId: string, userName: string) 
 
   const closePoll = useCallback(async (pollId: string) => {
     try {
-      await pollApi.closePoll(pollId);
+      await closePollSocket(meetingId, pollId);
       updatePoll(pollId, { isActive: false });
-      // Broadcast poll closure to other participants
-      getSocket().emit('poll:closed', { meetingId, pollId });
     } catch (err) {
       console.error('Failed to close poll:', err);
       throw err;

@@ -45,7 +45,11 @@ pollsRouter.get('/:meetingId', async (req, res) => {
 pollsRouter.post('/:meetingId', async (req, res) => {
   try {
     const { question, options, createdBy } = req.body;
-    if (!question || !options || !Array.isArray(options) || options.length < 2) {
+    const cleanQuestion = typeof question === 'string' ? question.trim() : '';
+    const cleanOptions = Array.isArray(options)
+      ? options.filter((option): option is string => typeof option === 'string').map((option) => option.trim()).filter(Boolean)
+      : [];
+    if (!cleanQuestion || cleanQuestion.length > 500 || cleanOptions.length < 2 || cleanOptions.length > 6) {
       return res.status(400).json({ message: 'Question and at least 2 options required' });
     }
 
@@ -55,9 +59,9 @@ pollsRouter.post('/:meetingId', async (req, res) => {
     const poll = await prisma.poll.create({
       data: {
         roomId: room.id,
-        question,
-        options: JSON.stringify(options),
-        createdBy: createdBy || 'Anonymous',
+        question: cleanQuestion,
+        options: JSON.stringify(cleanOptions),
+        createdBy: typeof createdBy === 'string' && createdBy.trim() ? createdBy.trim() : 'Anonymous',
       },
       include: { votes: true },
     });

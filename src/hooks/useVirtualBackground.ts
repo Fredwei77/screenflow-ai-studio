@@ -69,8 +69,6 @@ export function useVirtualBackground(
       img.src = options.imageUrl;
     }
 
-    video.play().catch(() => {});
-
     const processFrame = () => {
       if (stopped || !videoRef.current || !canvasRef.current) return;
 
@@ -159,11 +157,16 @@ export function useVirtualBackground(
       animFrameRef.current = requestAnimationFrame(processFrame);
     };
 
-    video.onloadeddata = () => {
+    const startProcessing = () => {
+      if (stopped || animFrameRef.current) return;
       canvas.width = video.videoWidth || 1280;
       canvas.height = video.videoHeight || 720;
       animFrameRef.current = requestAnimationFrame(processFrame);
     };
+
+    video.onloadeddata = startProcessing;
+    video.play().then(startProcessing).catch(() => {});
+    if (video.readyState >= 2) startProcessing();
 
     const outputStream = canvas.captureStream(30);
     const audioTracks = rawStream.getAudioTracks();
@@ -175,6 +178,7 @@ export function useVirtualBackground(
     return () => {
       stopped = true;
       cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = 0;
       if (videoRef.current) {
         videoRef.current.srcObject = null;
         videoRef.current = null;
@@ -182,7 +186,9 @@ export function useVirtualBackground(
       canvasRef.current = null;
       imageRef.current = null;
       if (outputStreamRef.current) {
-        outputStreamRef.current.getTracks().forEach((t) => t.stop());
+        // Audio tracks belong to the raw camera stream. Stopping every output
+        // track here would permanently mute the microphone after a bg change.
+        outputStreamRef.current.getVideoTracks().forEach((t) => t.stop());
         outputStreamRef.current = null;
       }
     };

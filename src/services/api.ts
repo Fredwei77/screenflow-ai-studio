@@ -1,4 +1,5 @@
 import { useAuthStore } from '../stores/useAuthStore';
+import type { ChatMessage, PollWithVotes, Vote } from '../types';
 
 const API_BASE = '/meet/api';
 
@@ -73,19 +74,25 @@ export const aiApi = {
 // Polls
 export const pollApi = {
   getPolls: (meetingId: string) =>
-    request<any[]>(`/polls/${meetingId}`),
+    request<PollWithVotes[]>(`/polls/${meetingId}`),
   createPoll: (meetingId: string, question: string, options: string[], createdBy: string) =>
-    request<any>(`/polls/${meetingId}`, {
+    request<PollWithVotes>(`/polls/${meetingId}`, {
       method: 'POST',
       body: JSON.stringify({ question, options, createdBy }),
     }),
   vote: (pollId: string, userId: string, userName: string, optionIdx: number) =>
-    request<any>(`/polls/${pollId}/vote`, {
+    request<Vote>(`/polls/${pollId}/vote`, {
       method: 'POST',
       body: JSON.stringify({ userId, userName, optionIdx }),
     }),
   closePoll: (pollId: string) =>
     request<any>(`/polls/${pollId}/close`, { method: 'PATCH' }),
+};
+
+// Chat
+export const chatApi = {
+  getMessages: (meetingId: string) =>
+    request<ChatMessage[]>(`/chat/${meetingId}`),
 };
 
 // Recordings

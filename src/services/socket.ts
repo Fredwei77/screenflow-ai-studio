@@ -47,8 +47,22 @@ export function sendIceCandidate(to: string, candidate: RTCIceCandidateInit) {
 }
 
 // Chat events
-export function sendMessage(roomId: string, content: string) {
-  getSocket().emit('chat:message', { roomId, content });
+export function sendMessage(roomId: string, content: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    getSocket().timeout(5000).emit(
+      'chat:message',
+      { roomId, content },
+      (error: Error | null, result?: { ok?: boolean; message?: string }) => {
+        if (error) {
+          reject(new Error('Chat message timed out'));
+        } else if (!result?.ok) {
+          reject(new Error(result?.message || 'Failed to send message'));
+        } else {
+          resolve();
+        }
+      }
+    );
+  });
 }
 
 // Media state events
@@ -77,4 +91,16 @@ export function sendPollCreated(meetingId: string, poll: any) {
 
 export function sendPollVote(meetingId: string, data: { pollId: string; userId: string; userName: string; optionIdx: number }) {
   getSocket().emit('poll:vote', { meetingId, ...data });
+}
+
+export function closePoll(meetingId: string, pollId: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    getSocket().emit('poll:close', { meetingId, pollId }, (result: { ok?: boolean; message?: string }) => {
+      if (result?.ok) {
+        resolve();
+      } else {
+        reject(new Error(result?.message || 'Failed to close poll'));
+      }
+    });
+  });
 }

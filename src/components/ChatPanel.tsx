@@ -13,6 +13,8 @@ interface ChatPanelProps {
 export const ChatPanel: React.FC<ChatPanelProps> = ({ roomId, currentUserId }) => {
   const { t } = useTranslation();
   const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
   const messages = useChatStore((s) => s.messages);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -22,11 +24,20 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ roomId, currentUserId }) =
     }
   }, [messages]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = input.trim();
-    if (!text) return;
-    sendMessage(roomId, text);
-    setInput('');
+    if (!text || !currentUserId || sending) return;
+    setSending(true);
+    setSendError('');
+    try {
+      await sendMessage(roomId, text);
+      setInput('');
+    } catch (error) {
+      console.error('Failed to send chat message:', error);
+      setSendError(error instanceof Error ? error.message : 'Failed to send message');
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -65,6 +76,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ roomId, currentUserId }) =
 
       {/* Input */}
       <div className="p-3 border-t border-gray-800">
+        {sendError && <p className="mb-2 text-xs text-red-400">{sendError}</p>}
         <div className="flex gap-2">
           <input
             type="text"
@@ -76,7 +88,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ roomId, currentUserId }) =
           />
           <button
             onClick={handleSend}
-            disabled={!input.trim()}
+            disabled={!input.trim() || !currentUserId || sending}
             className="p-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             aria-label={t('chat.send')}
           >

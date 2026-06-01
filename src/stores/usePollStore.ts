@@ -20,7 +20,13 @@ export const usePollStore = create<PollState>()((set) => ({
   activePoll: null,
   isPollPanelOpen: false,
 
-  setPolls: (polls) => set({ polls }),
+  setPolls: (polls) => set((state) => {
+    const byId = new Map(polls.map((poll) => [poll.id, poll]));
+    state.polls.forEach((poll) => {
+      if (!byId.has(poll.id)) byId.set(poll.id, poll);
+    });
+    return { polls: Array.from(byId.values()) };
+  }),
   addPoll: (poll) => set((state) => {
     // Deduplicate: skip if poll with same id already exists
     if (state.polls.some((p) => p.id === poll.id)) return state;

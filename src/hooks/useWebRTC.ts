@@ -22,33 +22,46 @@ export function useWebRTC(localStream: MediaStream | null) {
   const recvTransportRef = useRef<mediasoupClientTypes.Transport | null>(null);
   const producersRef = useRef<Map<string, mediasoupClientTypes.Producer>>(new Map()); // kind -> producer
   const consumersRef = useRef<Map<string, mediasoupClientTypes.Consumer>>(new Map()); // consumerId -> consumer
-  const pendingConsumeRef = useRef<Array<{ producerId: string; kind: string; peer: any }>>([]);
+  const consumedProducerIdsRef = useRef<Set<string>>(new Set());
+  const consumingProducerIdsRef = useRef<Set<string>>(new Set());
+  const closedProducerIdsRef = useRef<Set<string>>(new Set());
+  const socketRequestQueuesRef = useRef<Map<string, Promise<void>>>(new Map());
   const isJoiningRef = useRef(false);
 
   const { setRemoteStream, removeRemoteStream } = useMeetingStore();
 
   // Emit a socket event with response event (non-ack based for SFU signaling)
   const socketRequest = useCallback((event: string, data?: any, responseEvent?: string): Promise<any> => {
-    return new Promise((resolve, reject) => {
+    const responseKey = responseEvent || `${event}Response`;
+    const previousRequest = socketRequestQueuesRef.current.get(responseKey) || Promise.resolve();
+    const request = previousRequest.catch(() => {}).then(() => new Promise<any>((resolve, reject) => {
       const socket = getSocket();
-      const responseKey = responseEvent || `${event}Response`;
-
-      const timeout = setTimeout(() => {
-        socket.off(responseKey as any);
-        reject(new Error(`Timeout waiting for ${responseKey}`));
-      }, 10000);
-
-      socket.once(responseKey as any, (response: any) => {
+      const handleResponse = (response: any) => {
         clearTimeout(timeout);
         if (response.error) {
           reject(new Error(response.error));
         } else {
           resolve(response);
         }
-      });
+      };
+      const timeout = setTimeout(() => {
+        socket.off(responseKey as any, handleResponse);
+        reject(new Error(`Timeout waiting for ${responseKey}`));
+      }, 10000);
 
+      socket.once(responseKey as any, handleResponse);
       socket.emit(event, data);
+    }));
+    const queueTail = request.then(() => undefined, () => undefined);
+
+    socketRequestQueuesRef.current.set(responseKey, queueTail);
+    queueTail.finally(() => {
+      if (socketRequestQueuesRef.current.get(responseKey) === queueTail) {
+        socketRequestQueuesRef.current.delete(responseKey);
+      }
     });
+
+    return request;
   }, []);
 
   // Consume a single remote producer
@@ -64,6 +77,15 @@ export function useWebRTC(localStream: MediaStream | null) {
       return;
     }
 
+    if (
+      closedProducerIdsRef.current.has(producerId)
+      || consumedProducerIdsRef.current.has(producerId)
+      || consumingProducerIdsRef.current.has(producerId)
+    ) {
+      return;
+    }
+
+    consumingProducerIdsRef.current.add(producerId);
     try {
       console.log('[WebRTC] Requesting consume for producer:', producerId, 'kind:', kind);
       const result = await socketRequest('consume', {
@@ -89,6 +111,7 @@ export function useWebRTC(localStream: MediaStream | null) {
       console.log('[WebRTC] Consumer created:', consumer.id, 'track ready:', consumer.track ? 'yes' : 'no');
 
       consumersRef.current.set(consumer.id, consumer);
+      consumedProducerIdsRef.current.add(producerId);
 
       // Resume the consumer on the server
       await socketRequest('resumeConsumer', { consumerId: consumer.id }, 'consumerResumed');
@@ -112,11 +135,14 @@ export function useWebRTC(localStream: MediaStream | null) {
           removeRemoteStream(userId);
         }
         consumersRef.current.delete(consumer.id);
+        consumedProducerIdsRef.current.delete(producerId);
       };
 
       console.log(`[WebRTC] Consumed producer ${producerId} (${kind}) from ${peer.userName}`);
     } catch (err) {
       console.error('[WebRTC] Failed to consume producer:', producerId, err);
+    } finally {
+      consumingProducerIdsRef.current.delete(producerId);
     }
   }, [socketRequest, setRemoteStream, removeRemoteStream]);
 
@@ -189,12 +215,15 @@ export function useWebRTC(localStream: MediaStream | null) {
     // --- Listen for new producers from other peers ---
     socket.on('newProducer', ({ producerId, kind, peer }: { producerId: string; kind: string; peer: any }) => {
       console.log('[WebRTC] New producer notification:', producerId, kind, 'from', peer.userName);
+      closedProducerIdsRef.current.delete(producerId);
       consumeProducer(producerId, kind, peer);
     });
 
     // --- Listen for producer close notifications ---
     socket.on('producerClosed', ({ producerId }: { producerId: string }) => {
       console.log('[WebRTC] Producer closed:', producerId);
+      closedProducerIdsRef.current.add(producerId);
+      consumedProducerIdsRef.current.delete(producerId);
       // Find and close the consumer for this producer
       for (const [consumerId, consumer] of consumersRef.current) {
         if (consumer.producerId === producerId) {
@@ -383,6 +412,10 @@ export function useWebRTC(localStream: MediaStream | null) {
       if (!consumer.closed) consumer.close();
     }
     consumersRef.current.clear();
+    consumedProducerIdsRef.current.clear();
+    consumingProducerIdsRef.current.clear();
+    closedProducerIdsRef.current.clear();
+    socketRequestQueuesRef.current.clear();
 
     // Close transports
     if (sendTransportRef.current && !sendTransportRef.current.closed) {
