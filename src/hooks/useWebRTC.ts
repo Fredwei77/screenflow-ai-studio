@@ -8,6 +8,9 @@ const logJson = (message: string, data: Record<string, unknown>) => {
   console.log(`${message} ${JSON.stringify(data)}`);
 };
 
+const MEETING_VIDEO_MAX_BITRATE = 350_000;
+const MEETING_VIDEO_START_BITRATE = 350;
+
 /**
  * SFU-based WebRTC hook using mediasoup-client.
  *
@@ -421,8 +424,9 @@ export function useWebRTC(localStream: MediaStream | null) {
       const videoProducer = await sendTransport.produce({
         track: videoTrack,
         codec: preferredCodec,
+        encodings: [{ maxBitrate: MEETING_VIDEO_MAX_BITRATE }],
         codecOptions: {
-          videoGoogleStartBitrate: 1000,
+          videoGoogleStartBitrate: MEETING_VIDEO_START_BITRATE,
         },
       });
       producersRef.current.set('video', videoProducer);
