@@ -29,11 +29,19 @@ export const serverConfig = {
       rtcMaxPort: parseInt(process.env.SFU_RTC_MAX_PORT || '10100'),
       logLevel: 'warn' as mediasoupTypes.WorkerLogLevel,
     },
-    // Router media codecs - ordered by browser compatibility
-    // iOS Safari requires H264 Baseline Profile (not High/Main)
-    // Put H264 first as it's more widely supported
+    // Router media codecs - ordered by cross-browser receive stability.
+    // Chrome/Android desktop interop is more reliable with VP8. Keep H264
+    // Baseline as a Safari/iOS fallback.
     router: {
       mediaCodecs: [
+        {
+          kind: 'video' as mediasoupTypes.MediaKind,
+          mimeType: 'video/VP8',
+          clockRate: 90000,
+          parameters: {
+            'x-google-start-bitrate': 1000,
+          },
+        },
         {
           kind: 'video' as mediasoupTypes.MediaKind,
           mimeType: 'video/H264',
@@ -42,14 +50,6 @@ export const serverConfig = {
             'packetization-mode': 1,
             'profile-level-id': '42e01f', // H264 Baseline Profile - required for iOS Safari
             'level-asymmetry-allowed': 1,
-          },
-        },
-        {
-          kind: 'video' as mediasoupTypes.MediaKind,
-          mimeType: 'video/VP8',
-          clockRate: 90000,
-          parameters: {
-            'x-google-start-bitrate': 1000,
           },
         },
         {

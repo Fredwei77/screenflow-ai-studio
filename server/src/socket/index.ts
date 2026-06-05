@@ -309,6 +309,21 @@ export function setupSocketHandlers(io: Server) {
       }
     });
 
+    socket.on('requestKeyFrame', async ({ consumerId }: { consumerId: string }) => {
+      const entry = socketToSfuRoom.get(socket.id);
+      if (!entry) {
+        socket.emit('keyFrameRequested', { error: 'Not in a room' });
+        return;
+      }
+      try {
+        await entry.room.requestKeyFrame(socket.id, consumerId);
+        socket.emit('keyFrameRequested', { consumerId });
+      } catch (err: any) {
+        console.error('[SFU] requestKeyFrame error:', err);
+        socket.emit('keyFrameRequested', { error: err.message });
+      }
+    });
+
     // Client pauses a producer (e.g., mute mic/camera)
     socket.on('pauseProducer', ({ producerId }: { producerId: string }) => {
       const entry = socketToSfuRoom.get(socket.id);

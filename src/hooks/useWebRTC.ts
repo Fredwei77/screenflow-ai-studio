@@ -4,6 +4,10 @@ import { types as mediasoupClientTypes } from 'mediasoup-client';
 import { getSocket } from '../services/socket';
 import { useMeetingStore } from '../stores/useMeetingStore';
 
+const logJson = (message: string, data: Record<string, unknown>) => {
+  console.log(`${message} ${JSON.stringify(data)}`);
+};
+
 /**
  * SFU-based WebRTC hook using mediasoup-client.
  *
@@ -29,6 +33,18 @@ export function useWebRTC(localStream: MediaStream | null) {
   const isJoiningRef = useRef(false);
 
   const { setRemoteStream, removeRemoteStream } = useMeetingStore();
+
+  const getPreferredVideoCodec = useCallback(() => {
+    const codecs = deviceRef.current?.rtpCapabilities.codecs || [];
+    const userAgent = navigator.userAgent;
+    const isSafari = /safari/i.test(userAgent) && !/chrome|chromium|crios|android/i.test(userAgent);
+    const preferredMimeType = isSafari ? 'video/H264' : 'video/VP8';
+
+    return (
+      codecs.find((codec) => codec.mimeType.toLowerCase() === preferredMimeType.toLowerCase())
+      || codecs.find((codec) => codec.kind === 'video')
+    );
+  }, []);
 
   // Emit a socket event with response event (non-ack based for SFU signaling)
   const socketRequest = useCallback((event: string, data?: any, responseEvent?: string): Promise<any> => {
@@ -62,6 +78,81 @@ export function useWebRTC(localStream: MediaStream | null) {
     });
 
     return request;
+  }, []);
+
+  const requestRemoteKeyFrame = useCallback(async (consumerId: string, reason: string) => {
+    try {
+      await socketRequest('requestKeyFrame', { consumerId }, 'keyFrameRequested');
+      logJson('[WebRTC] Requested remote video keyframe:', { consumerId, reason });
+    } catch (error) {
+      console.warn('[WebRTC] Failed to request remote video keyframe:', { consumerId, reason, error });
+    }
+  }, [socketRequest]);
+
+  const logVideoConsumerStats = useCallback(async (
+    consumer: mediasoupClientTypes.Consumer,
+    label: string
+  ): Promise<{ bytesReceived: number; framesDecoded: number }> => {
+    let bytesReceived = 0;
+    let packetsReceived = 0;
+    let framesDecoded = 0;
+    let framesReceived = 0;
+    let keyFramesDecoded = 0;
+    let frameWidth: number | undefined;
+    let frameHeight: number | undefined;
+    let pliCount: number | undefined;
+    let firCount: number | undefined;
+    let nackCount: number | undefined;
+    let codecMimeType: string | undefined;
+
+    try {
+      const report = await consumer.getStats();
+      const stats = Array.from(report.values()) as Array<any>;
+      const inbound = stats.find((item) => (
+        item.type === 'inbound-rtp'
+        && !item.isRemote
+        && (item.kind === 'video' || item.mediaType === 'video')
+      ));
+
+      if (inbound) {
+        bytesReceived = inbound.bytesReceived || 0;
+        packetsReceived = inbound.packetsReceived || 0;
+        framesDecoded = inbound.framesDecoded || 0;
+        framesReceived = inbound.framesReceived || 0;
+        keyFramesDecoded = inbound.keyFramesDecoded || 0;
+        frameWidth = inbound.frameWidth;
+        frameHeight = inbound.frameHeight;
+        pliCount = inbound.pliCount;
+        firCount = inbound.firCount;
+        nackCount = inbound.nackCount;
+
+        const codec = stats.find((item) => item.id === inbound.codecId);
+        codecMimeType = codec?.mimeType;
+      }
+
+      logJson('[WebRTC] Video consumer stats:', {
+        label,
+        consumerId: consumer.id,
+        producerId: consumer.producerId,
+        trackMuted: consumer.track.muted,
+        trackReadyState: consumer.track.readyState,
+        bytesReceived,
+        packetsReceived,
+        framesReceived,
+        framesDecoded,
+        keyFramesDecoded,
+        frameWidth,
+        frameHeight,
+        pliCount,
+        firCount,
+        nackCount,
+        codecMimeType,
+      });
+    } catch (error) {
+      console.warn('[WebRTC] Failed to read video consumer stats:', { label, consumerId: consumer.id, error });
+    }
+
+    return { bytesReceived, framesDecoded };
   }, []);
 
   // Consume a single remote producer
@@ -115,24 +206,68 @@ export function useWebRTC(localStream: MediaStream | null) {
 
       // Resume the consumer on the server
       await socketRequest('resumeConsumer', { consumerId: consumer.id }, 'consumerResumed');
+      if (consumer.paused) {
+        consumer.resume();
+      }
 
       // Attach the track to the remote stream for this peer
       const track = consumer.track;
       const userId = peer.userId;
+      logJson('[WebRTC] Remote track attached:', {
+        producerId,
+        consumerId: consumer.id,
+        kind: track.kind,
+        muted: track.muted,
+        readyState: track.readyState,
+        settings: typeof track.getSettings === 'function' ? track.getSettings() : undefined,
+      });
 
-      // Get or create a MediaStream for this peer
-      let remoteStream = useMeetingStore.getState().remoteStreams.get(userId);
-      if (!remoteStream) {
-        remoteStream = new MediaStream();
+      if (track.kind === 'video') {
+        track.addEventListener('unmute', () => {
+          logJson('[WebRTC] Remote video track unmuted:', {
+            producerId,
+            consumerId: consumer.id,
+            readyState: track.readyState,
+            settings: typeof track.getSettings === 'function' ? track.getSettings() : undefined,
+          });
+        }, { once: true });
+
+        requestRemoteKeyFrame(consumer.id, 'after-video-track-attached');
+        [1500, 4000, 8000].forEach((delay) => {
+          window.setTimeout(async () => {
+            if (consumer.closed) return;
+            const stats = await logVideoConsumerStats(consumer, `${delay}ms-after-attach`);
+            if (track.readyState === 'live' && stats.framesDecoded === 0) {
+              requestRemoteKeyFrame(consumer.id, `no-decoded-frame-after-${delay}ms`);
+            }
+          }, delay);
+        });
       }
-      remoteStream.addTrack(track);
-      setRemoteStream(userId, remoteStream);
+
+      // Build a fresh MediaStream object every time. Mutating the existing
+      // MediaStream in place does not always retrigger React video binding,
+      // especially when audio arrives before video on desktop browsers.
+      const existingStream = useMeetingStore.getState().remoteStreams.get(userId);
+      const nextStream = new MediaStream(
+        existingStream
+          ? existingStream.getTracks().filter((existingTrack) => (
+              existingTrack.readyState === 'live'
+              && !(existingTrack.kind === track.kind && existingTrack.id === track.id)
+            ))
+          : []
+      );
+      nextStream.addTrack(track);
+      setRemoteStream(userId, nextStream);
 
       // When the track ends, remove it from the stream
       track.onended = () => {
-        remoteStream!.removeTrack(track);
-        if (remoteStream!.getTracks().length === 0) {
+        const latestStream = useMeetingStore.getState().remoteStreams.get(userId);
+        if (!latestStream) return;
+        const remainingTracks = latestStream.getTracks().filter((item) => item.id !== track.id && item.readyState === 'live');
+        if (remainingTracks.length === 0) {
           removeRemoteStream(userId);
+        } else {
+          setRemoteStream(userId, new MediaStream(remainingTracks));
         }
         consumersRef.current.delete(consumer.id);
         consumedProducerIdsRef.current.delete(producerId);
@@ -144,7 +279,7 @@ export function useWebRTC(localStream: MediaStream | null) {
     } finally {
       consumingProducerIdsRef.current.delete(producerId);
     }
-  }, [socketRequest, setRemoteStream, removeRemoteStream]);
+  }, [socketRequest, setRemoteStream, removeRemoteStream, requestRemoteKeyFrame, logVideoConsumerStats]);
 
   // Initialize the mediasoup Device and transports
   const initDevice = useCallback(async () => {
@@ -277,13 +412,15 @@ export function useWebRTC(localStream: MediaStream | null) {
         producersRef.current.delete('video');
       }
 
+      const preferredCodec = getPreferredVideoCodec();
+      logJson('[WebRTC] Producing video:', {
+        codec: preferredCodec?.mimeType || 'browser default',
+        trackSettings: typeof videoTrack.getSettings === 'function' ? videoTrack.getSettings() : undefined,
+      });
+
       const videoProducer = await sendTransport.produce({
         track: videoTrack,
-        encodings: [
-          { maxBitrate: 100000 },  // Low quality
-          { maxBitrate: 300000 },  // Medium quality
-          { maxBitrate: 900000 },  // High quality
-        ],
+        codec: preferredCodec,
         codecOptions: {
           videoGoogleStartBitrate: 1000,
         },
@@ -308,7 +445,7 @@ export function useWebRTC(localStream: MediaStream | null) {
       producersRef.current.set('audio', audioProducer);
       console.log('[WebRTC] Audio producer created:', audioProducer.id);
     }
-  }, []);
+  }, [getPreferredVideoCodec]);
 
   // Replace video track (for screen sharing or virtual background)
   const replaceVideoTrack = useCallback(async (newTrack: MediaStreamTrack) => {

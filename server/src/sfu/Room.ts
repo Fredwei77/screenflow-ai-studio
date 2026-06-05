@@ -16,6 +16,39 @@ interface PeerState {
   consumers: Map<string, mediasoupTypes.Consumer>; // key: consumer.id
 }
 
+function compactStats(stats: unknown): unknown {
+  if (!Array.isArray(stats)) return stats;
+  return stats.map((item: any) => ({
+    type: item.type,
+    timestamp: item.timestamp,
+    transportId: item.transportId,
+    localIp: item.localIp,
+    localPort: item.localPort,
+    remoteIp: item.remoteIp,
+    remotePort: item.remotePort,
+    protocol: item.protocol,
+    tuple: item.tuple,
+    selectedTuple: item.selectedTuple,
+    iceState: item.iceState,
+    dtlsState: item.dtlsState,
+    bytesReceived: item.bytesReceived,
+    recvBitrate: item.recvBitrate,
+    bytesSent: item.bytesSent,
+    sendBitrate: item.sendBitrate,
+    packetsReceived: item.packetsReceived,
+    packetsSent: item.packetsSent,
+    packetsLost: item.packetsLost,
+    bitrate: item.bitrate,
+    score: item.score,
+    kind: item.kind,
+    mimeType: item.mimeType,
+  }));
+}
+
+function logJson(message: string, data: Record<string, unknown>): void {
+  console.log(`${message} ${JSON.stringify(data)}`);
+}
+
 /**
  * Manages a single mediasoup room with peers, transports, producers, and consumers.
  * One Room per meetingId. Each peer gets a send transport and a recv transport.
@@ -103,6 +136,24 @@ export class Room {
       }
     });
 
+    transport.on('icestatechange', (state) => {
+      logJson(`[Room ${this.meetingId}] Transport ICE state:`, {
+        direction,
+        userId: peer.info.userId,
+        transportId: transport.id,
+        state,
+      });
+    });
+
+    transport.on('iceselectedtuplechange', (tuple) => {
+      logJson(`[Room ${this.meetingId}] Transport selected tuple:`, {
+        direction,
+        userId: peer.info.userId,
+        transportId: transport.id,
+        tuple,
+      });
+    });
+
     transport.observer.on('close', () => {
       console.log(`[Room ${this.meetingId}] Transport ${direction} closed for ${peer.info.userId}`);
     });
@@ -162,7 +213,19 @@ export class Room {
       this.notifyProducerClosed(socketId, producer.id);
     });
 
-    console.log(`[Room ${this.meetingId}] Producer created: ${producer.id} (${kind}) from ${peer.info.userId}`);
+    const codecMimeType = producer.rtpParameters.codecs?.[0]?.mimeType || 'unknown';
+    logJson(`[Room ${this.meetingId}] Producer created:`, {
+      producerId: producer.id,
+      kind,
+      codecMimeType,
+      userId: peer.info.userId,
+    });
+
+    if (producer.kind === 'video') {
+      setTimeout(async () => {
+        await this.logProducerStats(producer, '2s-after-produce');
+      }, 2000);
+    }
 
     // Notify all other peers about this new producer
     this.notifyNewProducer(socketId, producer.id, kind, peer.info);
@@ -235,7 +298,47 @@ export class Room {
     if (!consumer) throw new Error(`Consumer ${consumerId} not found for peer ${socketId}`);
 
     await consumer.resume();
+    if (consumer.kind === 'video') {
+      try {
+        await consumer.requestKeyFrame();
+        console.log(`[Room ${this.meetingId}] Keyframe requested for consumer: ${consumerId}`);
+      } catch (error) {
+        console.warn(`[Room ${this.meetingId}] Failed to request keyframe for consumer ${consumerId}:`, error);
+      }
+    }
     console.log(`[Room ${this.meetingId}] Consumer resumed: ${consumerId} for ${peer.info.userId}`);
+
+    if (consumer.kind === 'video') {
+      setTimeout(async () => {
+        await this.logConsumerFlowStats(consumer, '2s-after-resume');
+      }, 2000);
+      setTimeout(async () => {
+        await this.logConsumerFlowStats(consumer, '6s-after-resume');
+      }, 6000);
+    }
+  }
+
+  /**
+   * Ask the producer side to send a fresh video keyframe for a consumer.
+   */
+  async requestKeyFrame(socketId: string, consumerId: string): Promise<void> {
+    const peer = this.peers.get(socketId);
+    if (!peer) throw new Error(`Peer ${socketId} not found`);
+
+    const consumer = peer.consumers.get(consumerId);
+    if (!consumer) throw new Error(`Consumer ${consumerId} not found for peer ${socketId}`);
+
+    if (consumer.kind !== 'video') {
+      console.log(`[Room ${this.meetingId}] Ignored keyframe request for non-video consumer: ${consumerId}`);
+      return;
+    }
+
+    await consumer.requestKeyFrame();
+    console.log(`[Room ${this.meetingId}] Client-requested keyframe for consumer: ${consumerId}`);
+
+    setTimeout(async () => {
+      await this.logConsumerFlowStats(consumer, 'after-client-keyframe-request');
+    }, 1000);
   }
 
   /**
@@ -339,6 +442,52 @@ export class Room {
       }
     }
     return null;
+  }
+
+  private findProducer(producerId: string): mediasoupTypes.Producer | null {
+    for (const peer of this.peers.values()) {
+      const producer = peer.producers.get(producerId);
+      if (producer) return producer;
+    }
+    return null;
+  }
+
+  private async logProducerStats(producer: mediasoupTypes.Producer, label: string): Promise<void> {
+    if (producer.closed) return;
+    try {
+      const stats = await producer.getStats();
+      logJson(`[Room ${this.meetingId}] Producer stats:`, {
+        label,
+        producerId: producer.id,
+        kind: producer.kind,
+        stats: compactStats(stats),
+      });
+    } catch (error) {
+      console.warn(`[Room ${this.meetingId}] Failed to read producer stats for ${producer.id}:`, error);
+    }
+  }
+
+  private async logConsumerFlowStats(consumer: mediasoupTypes.Consumer, label: string): Promise<void> {
+    if (consumer.closed) return;
+    const producer = this.findProducer(consumer.producerId);
+    try {
+      const [consumerStats, producerStats] = await Promise.all([
+        consumer.getStats(),
+        producer && !producer.closed ? producer.getStats() : Promise.resolve(null),
+      ]);
+      logJson(`[Room ${this.meetingId}] Consumer flow stats:`, {
+        label,
+        consumerId: consumer.id,
+        producerId: consumer.producerId,
+        kind: consumer.kind,
+        consumerPaused: consumer.paused,
+        producerPaused: producer?.paused,
+        consumerStats: compactStats(consumerStats),
+        producerStats: compactStats(producerStats),
+      });
+    } catch (error) {
+      console.warn(`[Room ${this.meetingId}] Failed to read consumer flow stats for ${consumer.id}:`, error);
+    }
   }
 
   // These methods need a reference to the socket.io server to emit events.

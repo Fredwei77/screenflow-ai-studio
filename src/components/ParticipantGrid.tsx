@@ -2,6 +2,10 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Mic, MicOff, VideoOff, MonitorUp, Hand } from 'lucide-react';
 
+const logJson = (message: string, data: Record<string, unknown>) => {
+  console.log(`${message} ${JSON.stringify(data)}`);
+};
+
 interface ParticipantView {
   userId: string;
   name: string;
@@ -20,23 +24,50 @@ interface ParticipantGridProps {
 const VideoTile: React.FC<{ participant: ParticipantView }> = ({ participant }) => {
   const { t } = useTranslation();
   const videoRef = React.useRef<HTMLVideoElement>(null);
+  const liveVideoTrack = React.useMemo(
+    () => participant.stream?.getVideoTracks().find((track) => track.readyState === 'live') || null,
+    [participant.stream]
+  );
 
   React.useEffect(() => {
     const video = videoRef.current;
-    if (!video || !participant.stream) return;
+    if (!video || !participant.stream || !liveVideoTrack) return;
+
+    const logVideoState = (label: string) => {
+      logJson('[VideoTile] state:', {
+        label,
+        participant: participant.name,
+        isLocal: participant.isLocal,
+        streamId: participant.stream?.id,
+        trackId: liveVideoTrack.id,
+        trackMuted: liveVideoTrack.muted,
+        trackReadyState: liveVideoTrack.readyState,
+        trackSettings: typeof liveVideoTrack.getSettings === 'function' ? liveVideoTrack.getSettings() : undefined,
+        readyState: video.readyState,
+        paused: video.paused,
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+        srcObjectTrackIds: video.srcObject instanceof MediaStream
+          ? video.srcObject.getTracks().map((track) => `${track.kind}:${track.id}:${track.readyState}`)
+          : [],
+      });
+    };
 
     video.pause();
     video.srcObject = null;
     video.srcObject = participant.stream;
+    logVideoState('srcObject-attached');
 
     if (!participant.isCameraOff || participant.isScreenSharing) {
       // On iOS Safari, play() may reject with NotAllowedError for unmuted video
       // without a prior user gesture. Since our <video> is muted, it should autoplay.
       // Retry a few times in case the stream isn't ready yet.
       let cancelled = false;
-      const attemptPlay = (retries = 3) => {
+      const attemptPlay = (retries = 8) => {
         if (cancelled) return;
-        video.play().catch((err) => {
+        video.play().then(() => {
+          logVideoState('play-resolved');
+        }).catch((err) => {
           if (cancelled) return;
           if (err.name === 'NotAllowedError') {
             // Safari autoplay policy — will resume on next user interaction.
@@ -49,17 +80,33 @@ const VideoTile: React.FC<{ participant: ParticipantView }> = ({ participant }) 
           }
         });
       };
+      const handleCanPlay = () => {
+        logVideoState('can-play');
+        attemptPlay(2);
+      };
+      const handleTrackReady = () => {
+        logVideoState('track-unmuted');
+        attemptPlay(4);
+      };
+      video.addEventListener('loadedmetadata', handleCanPlay);
+      video.addEventListener('canplay', handleCanPlay);
+      liveVideoTrack.addEventListener('unmute', handleTrackReady);
       attemptPlay();
+      const stateTimer = window.setTimeout(() => logVideoState('2s-after-attach'), 2000);
       return () => {
         cancelled = true;
+        window.clearTimeout(stateTimer);
+        video.removeEventListener('loadedmetadata', handleCanPlay);
+        video.removeEventListener('canplay', handleCanPlay);
+        liveVideoTrack.removeEventListener('unmute', handleTrackReady);
         if (video.srcObject === participant.stream) {
           video.srcObject = null;
         }
       };
     }
-  }, [participant.stream, participant.isCameraOff, participant.isScreenSharing]);
+  }, [participant.stream, participant.isCameraOff, participant.isScreenSharing, liveVideoTrack]);
 
-  const showVideo = participant.stream && (!participant.isCameraOff || participant.isScreenSharing);
+  const showVideo = !!liveVideoTrack && (!participant.isCameraOff || participant.isScreenSharing);
 
   return (
     <div className="relative rounded-xl overflow-hidden bg-gray-800 border border-gray-700 h-full">
