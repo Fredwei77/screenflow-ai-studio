@@ -86,11 +86,112 @@ async function callOpenRouter(messages: any[], retries = 2, timeoutMs = 15000): 
   }
 }
 
-export async function generateQuestion(context: string, tone: string) {
-  const systemPrompt = `You are an expert course recording co-pilot and supportive host.
+const isChineseLanguage = (language?: string) => !!language?.toLowerCase().startsWith('zh');
+
+const compactContext = (context: string) =>
+  context
+    .replace(/\s+/g, ' ')
+    .replace(/[，。！？；、,.!?;:]+/g, ' ')
+    .trim();
+
+const pickContextTopic = (context: string, shouldUseChinese: boolean) => {
+  const compact = compactContext(context);
+  if (!compact) return shouldUseChinese ? '刚才这个知识点' : 'the point you just made';
+  const slice = compact.slice(-80);
+  return slice.length < compact.length ? slice.replace(/^\S+\s?/, '') || slice : slice;
+};
+
+const buildFallbackQuestions = (context: string, shouldUseChinese: boolean) => {
+  const topic = pickContextTopic(context, shouldUseChinese);
+  const now = Date.now();
+
+  if (shouldUseChinese) {
+    return [
+      {
+        id: crypto.randomUUID(),
+        text: `下一句可以这样接：“刚才提到的 ${topic}，我用一个实际场景说明它为什么有用。”`,
+        category: 'support',
+        priority: 'high',
+        rationale: '把抽象说明接到具体场景，能让听众更快理解价值。',
+        timestamp: now,
+      },
+      {
+        id: crypto.randomUUID(),
+        text: '建议补一句边界：这个功能适合什么情况，不适合什么情况？',
+        category: 'clarification',
+        priority: 'medium',
+        rationale: '说明边界能减少误解，让课程表达更可信。',
+        timestamp: now,
+      },
+      {
+        id: crypto.randomUUID(),
+        text: '可以用“三步法”收束：先解决什么问题，再怎么操作，最后得到什么结果？',
+        category: 'deep-dive',
+        priority: 'medium',
+        rationale: '结构化总结能帮助录课内容形成清晰段落。',
+        timestamp: now,
+      },
+    ];
+  }
+
+  return [
+    {
+      id: crypto.randomUUID(),
+      text: `Try continuing with: "For ${topic}, here is a real scenario where this becomes useful."`,
+      category: 'support',
+      priority: 'high',
+      rationale: 'A concrete scenario makes the recording easier to follow and more practical.',
+      timestamp: now,
+    },
+    {
+      id: crypto.randomUUID(),
+      text: 'Add one boundary: when does this feature work well, and when is it not the right fit?',
+      category: 'clarification',
+      priority: 'medium',
+      rationale: 'Boundaries make the explanation more credible and useful.',
+      timestamp: now,
+    },
+    {
+      id: crypto.randomUUID(),
+      text: 'Wrap this section in three steps: problem, operation, and result.',
+      category: 'deep-dive',
+      priority: 'medium',
+      rationale: 'A simple structure helps the audience retain the key point.',
+      timestamp: now,
+    },
+  ];
+};
+
+export async function generateQuestion(context: string, tone: string, language = 'en-US') {
+  const shouldUseChinese = isChineseLanguage(language);
+  const systemPrompt = shouldUseChinese
+    ? `你是一个专业的 AI 录课副驾驶和支持型主持人。
+用户正在录制课程或视频讲解。
+任务：根据用户刚刚讲的转写内容，生成 3 条高质量、可立即执行的辅助提示，帮助用户把录课讲得更清楚。
+语气：${tone}。
+重要要求：
+- 必须使用简体中文输出。
+- 每条 text 必须贴合转写里的具体内容，不要写“这个知识点”“这个功能”这种空泛表达，除非同时点出上下文主题。
+- 优先给“下一句可以怎么说”“应该补充什么例子”“如何收束这一段”的建议。
+- text 控制在 35 字以内；rationale 控制在 28 字以内。
+- 不要重复生成“补充一个具体例子”这种泛泛提示。
+- category 只能使用 deep-dive、clarification、creative、support。
+- priority 只能使用 low、medium、high。
+- rationale 也必须使用简体中文。
+- 只输出合法 JSON，不要输出 Markdown。
+格式：
+{
+  "items": [
+    {"text": "提示内容", "category": "deep-dive|clarification|creative|support", "priority": "low|medium|high", "rationale": "为什么这个提示有帮助"}
+  ]
+}`
+    : `You are an expert course recording co-pilot and supportive host.
 The user is recording a video presentation.
-Task: Generate 3 short, insightful follow-up prompts to help them continue talking.
+Task: Generate 3 high-quality, immediately useful coaching prompts based on the latest transcript.
 Tone: ${tone}.
+- Each text must refer to the actual transcript context. Avoid generic prompts like "give an example" unless you name the topic.
+- Prefer prompts that help the speaker continue the next sentence, add a concrete scenario, clarify a boundary, or summarize the current section.
+- Keep text under 18 words and rationale under 16 words.
 IMPORTANT: Output valid JSON only. Format:
 {
   "items": [
@@ -100,22 +201,18 @@ IMPORTANT: Output valid JSON only. Format:
 
   const messages = [
     { role: 'system', content: systemPrompt },
-    { role: 'user', content: `Context: "${context}"` },
+    {
+      role: 'user',
+      content: shouldUseChinese
+        ? `最近转写内容：\n${context}\n\n请只基于这段内容给录课提示。`
+        : `Latest transcript:\n${context}\n\nOnly use this transcript to create coaching prompts.`,
+    },
   ];
 
   const content = await callOpenRouter(messages);
   if (!content) {
     return {
-      items: [
-        {
-          id: crypto.randomUUID(),
-          text: 'Can you give a concrete example to make this point easier to follow?',
-          category: 'support',
-          priority: 'medium',
-          rationale: 'Examples keep course recordings practical and easier to understand.',
-          timestamp: Date.now(),
-        },
-      ],
+      items: buildFallbackQuestions(context, shouldUseChinese),
     };
   }
 
@@ -126,15 +223,17 @@ IMPORTANT: Output valid JSON only. Format:
     ? [data]
     : [];
 
-  return {
-    items: items.slice(0, 3).map((item: any) => ({
+  const normalizedItems = items.slice(0, 3).map((item: any) => ({
       id: crypto.randomUUID(),
-      text: item.text,
+      text: typeof item.text === 'string' ? item.text.trim() : '',
       category: item.category || 'support',
       priority: item.priority || 'medium',
-      rationale: item.rationale || '',
+      rationale: typeof item.rationale === 'string' ? item.rationale.trim() : '',
       timestamp: Date.now(),
-    })).filter((item: any) => !!item.text),
+    })).filter((item: any) => !!item.text);
+
+  return {
+    items: normalizedItems.length > 0 ? normalizedItems : buildFallbackQuestions(context, shouldUseChinese),
   };
 }
 

@@ -5,6 +5,7 @@ export function useMediaStream() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [screenCaptureSurface, setScreenCaptureSurface] = useState<string | null>(null);
   const [mediaSource, setMediaSource] = useState<MediaSourceType>('camera');
   const [error, setError] = useState<string | null>(null);
   const recorderStateRef = useRef<RecorderState>(RecorderState.IDLE);
@@ -18,6 +19,26 @@ export function useMediaStream() {
     if (s) s.getTracks().forEach((t) => t.stop());
   };
 
+  const requestDisplayStream = async () => {
+    const displayStream = await navigator.mediaDevices.getDisplayMedia({
+      video: {
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+        frameRate: { ideal: 30 },
+        displaySurface: 'window',
+      },
+      audio: false,
+      preferCurrentTab: false,
+      selfBrowserSurface: 'exclude',
+      surfaceSwitching: 'include',
+      monitorTypeSurfaces: 'include',
+    } as any);
+
+    const displaySurface = displayStream.getVideoTracks()[0]?.getSettings().displaySurface || null;
+    setScreenCaptureSurface(displaySurface);
+    return displayStream;
+  };
+
   const switchMediaSource = useCallback(
     async (type: MediaSourceType) => {
       try {
@@ -25,6 +46,7 @@ export function useMediaStream() {
         stopStream(stream);
         stopStream(cameraStream);
         stopStream(screenStream);
+        setScreenCaptureSurface(null);
 
         setError(null);
 
@@ -37,10 +59,7 @@ export function useMediaStream() {
         };
 
         if (type === 'screen') {
-          const displayStream = await navigator.mediaDevices.getDisplayMedia({
-            video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
-            audio: false,
-          });
+          const displayStream = await requestDisplayStream();
           const micStream = await navigator.mediaDevices.getUserMedia({ audio: micAudioConstraints });
           const combined = new MediaStream([
             ...displayStream.getVideoTracks(),
@@ -58,13 +77,11 @@ export function useMediaStream() {
           setStream(camStream);
           setCameraStream(camStream);
           setScreenStream(null);
+          setScreenCaptureSurface(null);
           setMediaSource(type);
         } else {
           // 'both' — screen + mic + camera
-          const displayStream = await navigator.mediaDevices.getDisplayMedia({
-            video: true,
-            audio: false,
-          });
+          const displayStream = await requestDisplayStream();
           const camStream = await navigator.mediaDevices.getUserMedia({
             video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: 'user', frameRate: { ideal: 30 } },
             audio: false,
@@ -98,6 +115,7 @@ export function useMediaStream() {
         setStream(null);
         setCameraStream(null);
         setScreenStream(null);
+        setScreenCaptureSurface(null);
         setMediaSource(type);
       }
     },
@@ -119,6 +137,7 @@ export function useMediaStream() {
       setStream(camStream);
       setCameraStream(camStream);
       setScreenStream(null);
+      setScreenCaptureSurface(null);
       setError(null);
     } catch (err: any) {
       const errorMsg =
@@ -167,6 +186,7 @@ export function useMediaStream() {
     setStream,
     cameraStream,
     screenStream,
+    screenCaptureSurface,
     mediaSource,
     setMediaSource,
     error,

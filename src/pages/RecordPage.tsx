@@ -63,10 +63,10 @@ const getPresenterPosition = (
 };
 
 export const RecordPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const { stream, cameraStream, screenStream, mediaSource, error, setError, switchMediaSource, initCamera } = useMediaStream();
+  const { stream, cameraStream, screenStream, screenCaptureSurface, mediaSource, error, setError, switchMediaSource, initCamera } = useMediaStream();
   const { recorderState, setRecorderState, downloadUrl, recordingDuration, startRecording, stopRecording, downloadVideo, createDownloadUrl, recordedChunks } = useRecording();
   const { audioLevel, startVisualization, stopVisualization } = useAudioLevel();
 
@@ -175,6 +175,7 @@ export const RecordPage: React.FC = () => {
   const baseDisplayStream = (virtualBgMode !== 'none' && processedStream) ? processedStream : compositorOutput;
   const privacyBlurStream = usePrivacyBlur(baseDisplayStream, privacyBlurRegions, stream);
   const displayStream = privacyBlurStream.outputStream || baseDisplayStream;
+  const isFullScreenShare = screenCaptureSurface === 'monitor' && mediaSource !== 'camera';
 
   useEffect(() => {
     const updatePreviewBounds = () => {
@@ -234,8 +235,15 @@ export const RecordPage: React.FC = () => {
   const lastAnalyzedLengthRef = useRef(0);
   const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const speechLanguage = config.speechLanguage === 'auto'
+    ? i18n.language?.startsWith('zh') ? 'zh-CN' : 'en-US'
+    : config.speechLanguage;
   const useSpeechHook = config.useMockSpeechRecognition ? useMockSpeechRecognition : useSpeechRecognition;
-  const { transcript, interimTranscript, startRecognition, stopRecognition, fullSessionText } = useSpeechHook(recorderState === RecorderState.RECORDING);
+  const { transcript, interimTranscript, startRecognition, stopRecognition, fullSessionText } = useSpeechHook(
+    recorderState === RecorderState.RECORDING,
+    speechLanguage,
+    t,
+  );
 
   const openUpgradeIntent = useCallback((feature: string, title: string, description: string) => {
     trackCommercialIntent('upgrade_click', {
@@ -296,25 +304,30 @@ export const RecordPage: React.FC = () => {
 
     setIsAiProcessing(true);
     try {
-      const recentContext = fullSessionText.slice(-400);
-      const result = await aiApi.generateQuestion(recentContext, 'professional');
+      const recentContext = fullSessionText.slice(-800);
+      const result = await aiApi.generateQuestion(
+        recentContext,
+        'professional',
+        i18n.language?.startsWith('zh') ? 'zh-CN' : 'en-US',
+      );
       const nextQuestions = Array.isArray(result?.items)
         ? result.items
         : result?.text
         ? [result]
         : [];
       if (nextQuestions.length > 0) {
-        setQuestions((prev) => [
-          ...prev,
-          ...nextQuestions.map((item: Partial<Question>) => ({
+        setQuestions((prev) => {
+          const existingTexts = new Set(prev.map((item) => item.text.trim()));
+          const uniqueNext = nextQuestions.map((item: Partial<Question>) => ({
             id: item.id || crypto.randomUUID(),
             text: item.text || '',
             category: item.category || 'support',
             priority: item.priority || 'medium',
             rationale: item.rationale || '',
             timestamp: item.timestamp || Date.now(),
-          })).filter((item: Question) => !!item.text),
-        ].slice(-12));
+          })).filter((item: Question) => !!item.text && !existingTexts.has(item.text.trim()));
+          return [...prev, ...uniqueNext].slice(-12);
+        });
       }
       lastAnalyzedLengthRef.current = fullSessionText.length;
 
@@ -331,7 +344,7 @@ export const RecordPage: React.FC = () => {
     } finally {
       setIsAiProcessing(false);
     }
-  }, [fullSessionText, isAiProcessing]);
+  }, [fullSessionText, i18n.language, isAiProcessing]);
 
   // Watch transcript for AI triggers
   useEffect(() => {
@@ -557,8 +570,7 @@ export const RecordPage: React.FC = () => {
       openUpgradeIntent('subtitle_export_srt', '字幕导出属于 Pro 功能', '升级后可以把录制转写导出为 SRT 字幕，用于剪映、Premiere、B 站和课程平台。');
       return;
     }
-    const lang = config.speechLanguage || 'en-US';
-    const segments = splitTextIntoSegments(fullSessionText, recordingDuration * 1000, lang);
+    const segments = splitTextIntoSegments(fullSessionText, recordingDuration * 1000, speechLanguage);
     const srt = transcriptToSRT(segments);
     downloadFile(srt, `recording-${Date.now()}.srt`, 'text/plain');
   }, [fullSessionText, hasProAccess, openUpgradeIntent, recordingDuration]);
@@ -569,8 +581,7 @@ export const RecordPage: React.FC = () => {
       openUpgradeIntent('subtitle_export_vtt', '字幕导出属于 Pro 功能', '升级后可以把字幕导出为 VTT，便于上传到网站、课程平台或企业知识库。');
       return;
     }
-    const lang = config.speechLanguage || 'en-US';
-    const segments = splitTextIntoSegments(fullSessionText, recordingDuration * 1000, lang);
+    const segments = splitTextIntoSegments(fullSessionText, recordingDuration * 1000, speechLanguage);
     const vtt = transcriptToVTT(segments);
     downloadFile(vtt, `recording-${Date.now()}.vtt`, 'text/vtt');
   }, [fullSessionText, hasProAccess, openUpgradeIntent, recordingDuration]);
@@ -767,7 +778,13 @@ export const RecordPage: React.FC = () => {
       <main className="flex-1 overflow-hidden flex flex-col md:flex-row p-4 sm:p-6 gap-4 sm:gap-6 relative">
         <section className="flex-[2] flex flex-col gap-4 sm:gap-6 min-h-0">
           <div ref={previewRef} className="flex-1 min-h-0 relative">
-            <Recorder stream={displayStream} error={error} mediaSource={mediaSource} isRecording={recorderState === RecorderState.RECORDING} />
+            <Recorder
+              stream={displayStream}
+              error={error}
+              mediaSource={mediaSource}
+              isRecording={recorderState === RecorderState.RECORDING}
+              isFullScreenShare={isFullScreenShare}
+            />
             <AnnotationLayer
               isVisible={showAnnotations}
               theme={theme}
@@ -778,7 +795,7 @@ export const RecordPage: React.FC = () => {
               regions={privacyBlurRegions}
               onRegionsChange={setPrivacyBlurRegions}
             />
-            {previewBounds && compositorState.isCompositing && (
+            {previewBounds && compositorState.isCompositing && !isFullScreenShare && (
               <div
                 className="absolute inset-0 z-10"
                 onPointerMove={handleOverlayPointerMove}
@@ -845,6 +862,36 @@ export const RecordPage: React.FC = () => {
             )}
           </div>
 
+          {recorderState === RecorderState.FINISHED && downloadUrl && (
+            <div className={`rounded-xl border px-4 py-3 shrink-0 ${theme === 'dark' ? 'border-indigo-500/30 bg-indigo-500/10' : 'border-indigo-200 bg-indigo-50'}`}>
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-lg bg-indigo-600 p-2">
+                    <Crown className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>录制已完成，Pro 可以把这段内容变成可交付课程</h3>
+                    <p className={`mt-1 text-xs leading-5 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>
+                      解锁无水印、SRT/VTT 字幕导出、AI 摘要、长时录制、高清导出、视频剪辑和发布工作台。
+                    </p>
+                  </div>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => openUpgradeIntent('recording_finished_upgrade', '申请 Pro 内测', '你已完成一次录制。提交 Pro 意向后，我们会优先开放无水印、字幕导出、AI 摘要、长时录制和高清导出能力。')}
+                    icon={<Crown className="h-4 w-4" />}
+                  >
+                    申请 Pro
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={downloadVideo} icon={<Download className="h-4 w-4" />}>
+                    先下载
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className={`h-20 sm:h-24 rounded-xl flex items-center justify-between px-4 sm:px-8 shrink-0 ${theme === 'dark' ? 'bg-gray-900/50 border border-gray-800' : 'bg-white border border-gray-200'}`}>
             <div className="flex items-center gap-4 sm:gap-6">
               <div className="flex items-center gap-2">
@@ -897,7 +944,7 @@ export const RecordPage: React.FC = () => {
 
         <aside className="flex-1 md:max-w-md flex flex-col gap-4 sm:gap-6 min-h-0">
           <div className="flex-1 min-h-0"><QuestionPanel questions={questions} isProcessing={isAiProcessing} /></div>
-          <div className={`h-1/3 rounded-xl p-4 flex flex-col ${theme === 'dark' ? 'bg-gray-900/50 border border-gray-800' : 'bg-white border border-gray-200'}`}>
+          <div className={`min-h-[280px] shrink-0 rounded-xl p-4 flex flex-col ${theme === 'dark' ? 'bg-gray-900/50 border border-gray-800' : 'bg-white border border-gray-200'}`}>
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-sm font-semibold text-gray-400">{t('recording.analysis')}</h3>
               <span className="text-xs text-green-500">{t('recording.active')}</span>
@@ -931,7 +978,7 @@ export const RecordPage: React.FC = () => {
           onClose={() => setShowVideoEditor(false)}
           sourceBlob={editBlob}
           fullSessionText={fullSessionText}
-          subtitleLanguage={config.speechLanguage}
+          subtitleLanguage={speechLanguage}
           theme={theme}
         />
       </Suspense>

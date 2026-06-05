@@ -119,6 +119,19 @@ export const getCommercialLeads = () => {
   return normalized;
 };
 
+export const getCommercialIntentEvents = () => readArray<CommercialIntentEvent>(EVENTS_KEY);
+
+export const updateCommercialLeadStatus = (id: string, status: CommercialLead['status']) => {
+  const leads = getCommercialLeads();
+  const nextLeads = leads.map((lead) =>
+    lead.id === id
+      ? { ...lead, status, updatedAt: new Date().toISOString() }
+      : lead
+  );
+  localStorage.setItem(LEADS_KEY, JSON.stringify(nextLeads.slice(0, 100)));
+  return nextLeads.find((lead) => lead.id === id) || null;
+};
+
 export const getLatestCommercialLead = (plan?: string) => {
   const leads = getCommercialLeads();
   return plan ? leads.find((lead) => lead.plan === plan) : leads[0];

@@ -30,11 +30,9 @@ export const PricingPage: React.FC = () => {
   const [form, setForm] = useState({
     name: '',
     contact: '',
-    company: '',
     role: '',
-    teamSize: '1',
     useCase: t('pricing.lead.useCases.education'),
-    message: '',
+    message: t('pricing.lead.willingnessOptions.yes'),
   });
 
   const plans = useMemo<Plan[]>(() => [
@@ -82,7 +80,11 @@ export const PricingPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    setForm((value) => ({ ...value, useCase: t('pricing.lead.useCases.education') }));
+    setForm((value) => ({
+      ...value,
+      useCase: t('pricing.lead.useCases.education'),
+      message: t('pricing.lead.willingnessOptions.yes'),
+    }));
   }, [t]);
 
   const openLead = (plan: Plan['name']) => {
@@ -101,6 +103,8 @@ export const PricingPage: React.FC = () => {
     event.preventDefault();
     const nextLead = saveCommercialLead({
       ...form,
+      company: '',
+      teamSize: '1',
       plan: selectedPlan,
       source: 'pricing_page',
     });
@@ -282,9 +286,7 @@ export const PricingPage: React.FC = () => {
             <div className="grid gap-4 sm:grid-cols-2">
               <Input label={t('pricing.lead.name')} value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} required />
               <Input label={t('pricing.lead.contact')} placeholder={t('pricing.lead.contactPlaceholder')} value={form.contact} onChange={(e) => setForm((v) => ({ ...v, contact: e.target.value }))} required />
-              <Input label={t('pricing.lead.company')} value={form.company} onChange={(e) => setForm((v) => ({ ...v, company: e.target.value }))} />
               <Input label={t('pricing.lead.role')} value={form.role} onChange={(e) => setForm((v) => ({ ...v, role: e.target.value }))} />
-              <Input label={t('pricing.lead.teamSize')} type="number" min="1" value={form.teamSize} onChange={(e) => setForm((v) => ({ ...v, teamSize: e.target.value }))} />
               <label className="block">
                 <span className="mb-1.5 block text-sm font-medium text-gray-300">{t('pricing.lead.useCase')}</span>
                 <select
@@ -297,16 +299,20 @@ export const PricingPage: React.FC = () => {
                   ))}
                 </select>
               </label>
+              <label className="block sm:col-span-2">
+                <span className="mb-1.5 block text-sm font-medium text-gray-300">{t('pricing.lead.willingness')}</span>
+                <select
+                  className="w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  value={form.message}
+                  onChange={(e) => setForm((v) => ({ ...v, message: e.target.value }))}
+                >
+                  <option>{t('pricing.lead.willingnessOptions.yes')}</option>
+                  <option>{t('pricing.lead.willingnessOptions.maybe')}</option>
+                  <option>{t('pricing.lead.willingnessOptions.team')}</option>
+                  <option>{t('pricing.lead.willingnessOptions.no')}</option>
+                </select>
+              </label>
             </div>
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-medium text-gray-300">{t('pricing.lead.message')}</span>
-              <textarea
-                className="min-h-24 w-full rounded-lg border border-gray-700 bg-gray-800 px-4 py-2.5 text-sm text-white placeholder-gray-500 transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder={t('pricing.lead.messagePlaceholder')}
-                value={form.message}
-                onChange={(e) => setForm((v) => ({ ...v, message: e.target.value }))}
-              />
-            </label>
             <Button className="w-full" type="submit" icon={<Send className="h-4 w-4" />}>{t('pricing.lead.submit')}</Button>
           </form>
         )}

@@ -25,6 +25,8 @@ const VideoTile: React.FC<{ participant: ParticipantView }> = ({ participant }) 
     const video = videoRef.current;
     if (!video || !participant.stream) return;
 
+    video.pause();
+    video.srcObject = null;
     video.srcObject = participant.stream;
 
     if (!participant.isCameraOff || participant.isScreenSharing) {
@@ -48,7 +50,12 @@ const VideoTile: React.FC<{ participant: ParticipantView }> = ({ participant }) 
         });
       };
       attemptPlay();
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+        if (video.srcObject === participant.stream) {
+          video.srcObject = null;
+        }
+      };
     }
   }, [participant.stream, participant.isCameraOff, participant.isScreenSharing]);
 

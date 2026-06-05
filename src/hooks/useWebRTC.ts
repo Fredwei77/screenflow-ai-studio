@@ -312,11 +312,23 @@ export function useWebRTC(localStream: MediaStream | null) {
 
   // Replace video track (for screen sharing or virtual background)
   const replaceVideoTrack = useCallback(async (newTrack: MediaStreamTrack) => {
+    if (newTrack.readyState !== 'live') {
+      console.warn('[WebRTC] Skip replacing video track because track is not live:', newTrack.readyState);
+      return false;
+    }
+
     const videoProducer = producersRef.current.get('video');
     if (videoProducer && !videoProducer.closed) {
-      await videoProducer.replaceTrack({ track: newTrack });
-      console.log('[WebRTC] Video track replaced on producer');
+      try {
+        await videoProducer.replaceTrack({ track: newTrack });
+        console.log('[WebRTC] Video track replaced on producer');
+        return true;
+      } catch (error) {
+        console.warn('[WebRTC] Failed to replace video track:', error);
+        return false;
+      }
     }
+    return false;
   }, []);
 
   // Toggle mute (pause/resume audio producer)

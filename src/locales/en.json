@@ -106,9 +106,16 @@
       "contact": "Contact",
       "contactPlaceholder": "WeChat, phone, or email",
       "company": "Company / Organization",
-      "role": "Role",
+      "role": "Identity",
       "teamSize": "Team Size",
       "useCase": "Use Case",
+      "willingness": "Willingness to pay",
+      "willingnessOptions": {
+        "yes": "Yes, CNY 29-59/month is acceptable",
+        "maybe": "Interested, want to try first",
+        "team": "Need Team or private deployment pricing",
+        "no": "Not willing to pay yet"
+      },
       "message": "Notes",
       "messagePlaceholder": "For example: recording frequency, expected users, or Pro features you need first",
       "submit": "Submit Interest",
@@ -159,7 +166,11 @@
   "chat": {
     "noMessages": "No messages yet",
     "placeholder": "Type a message...",
-    "send": "Send message"
+    "send": "Send message",
+    "connecting": "Connecting to chat room...",
+    "notInRoom": "Chat room connection was restored. Please send again.",
+    "timeout": "Send timed out. Check the connection and retry.",
+    "failedSend": "Failed to send. Please try again."
   },
   "whiteboard": {
     "title": "Whiteboard",
@@ -214,7 +225,12 @@
     "speakToGenerate": "Speak to generate...",
     "connectionError": "Connection Error",
     "initializing": "Initializing...",
-    "previewMode": "Preview Mode"
+    "previewMode": "Preview Mode",
+    "fullScreenShare": {
+      "title": "Sharing entire screen",
+      "description": "Live preview is hidden to prevent an infinite mirror effect.",
+      "tip": "For cleaner course recordings, switch the source and choose a specific window or browser tab instead of the entire screen. Recording still captures the screen you selected."
+    }
   },
   "settings": {
     "title": "Settings",
@@ -241,11 +257,29 @@
     "thinking": "Thinking...",
     "listening": "Listening",
     "startSpeaking": "Start speaking...",
-    "aiDescription": "AI will generate questions to keep you going."
+    "aiDescription": "AI will generate questions to keep you going.",
+    "categories": {
+      "deep-dive": "Deep dive",
+      "clarification": "Clarification",
+      "creative": "Creative",
+      "support": "Support"
+    },
+    "priorities": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High"
+    }
   },
   "performance": {
     "liveAnalysis": "Live Analysis",
-    "performance": "Performance"
+    "performance": "Performance",
+    "metrics": {
+      "Clarity": "Clarity",
+      "Engagement": "Engage",
+      "Structure": "Structure",
+      "Pacing": "Pacing",
+      "Actionability": "Action"
+    }
   },
   "subtitles": {
     "notSupported": "Speech Recognition not supported! Please use Chrome or Edge.",

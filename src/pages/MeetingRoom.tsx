@@ -86,6 +86,11 @@ export const MeetingRoom: React.FC = () => {
   const { isWhiteboardOpen, toggleWhiteboard } = useWhiteboardStore();
   const { isRecording, startRecording, stopRecording } = useMeetingRecording(meetingId || '', currentUserId, userName, localPreviewStream || localStream);
 
+  const getLiveVideoTrack = (stream?: MediaStream | null) => {
+    const track = stream?.getVideoTracks()[0];
+    return track?.readyState === 'live' ? track : null;
+  };
+
   // Initialize local media stream
   useEffect(() => {
     const init = async () => {
@@ -193,21 +198,27 @@ export const MeetingRoom: React.FC = () => {
 
   // Screen sharing
   useEffect(() => {
+    const restoreCameraAfterScreenShare = () => {
+      const streamToRestore = processedStreamRef.current || localStreamRef.current || localStream;
+      if (!streamToRestore) return;
+
+      streamToRestore.getVideoTracks().forEach((track) => {
+        track.enabled = !useMeetingStore.getState().isCameraOff;
+      });
+
+      const cameraTrack = getLiveVideoTrack(streamToRestore);
+      if (cameraTrack) {
+        replaceVideoTrack(cameraTrack);
+      }
+    };
+
     if (!isScreenSharing) {
       if (screenStreamRef.current) {
         screenStreamRef.current.getTracks().forEach((t) => t.stop());
         screenStreamRef.current = null;
       }
       setScreenShareStream(null);
-      // Restore camera track from the effective stream (processed or raw)
-      const streamToRestore = processedStreamRef.current || localStream;
-      if (streamToRestore) {
-        const cameraTrack = streamToRestore.getVideoTracks()[0];
-        if (cameraTrack) {
-          replaceVideoTrack(cameraTrack);
-          streamToRestore.getVideoTracks().forEach((t) => { t.enabled = !isCameraOff; });
-        }
-      }
+      restoreCameraAfterScreenShare();
       return;
     }
 
@@ -222,21 +233,15 @@ export const MeetingRoom: React.FC = () => {
         screenStreamRef.current = screenStream;
         setScreenShareStream(screenStream);
 
-        const screenTrack = screenStream.getVideoTracks()[0];
+        const screenTrack = getLiveVideoTrack(screenStream);
         if (screenTrack) {
           replaceVideoTrack(screenTrack);
-          if (localStream) {
-            localStream.getVideoTracks().forEach((t) => { t.enabled = false; });
-          }
           screenTrack.onended = () => {
-            const streamToRestore = processedStreamRef.current || localStream;
-            if (streamToRestore) {
-              streamToRestore.getVideoTracks().forEach((t) => { t.enabled = !useMeetingStore.getState().isCameraOff; });
-              const track = streamToRestore.getVideoTracks()[0];
-              if (track) replaceVideoTrack(track);
-            }
+            restoreCameraAfterScreenShare();
             setScreenShareStream(null);
-            useMeetingStore.getState().toggleScreenShare();
+            if (useMeetingStore.getState().isScreenSharing) {
+              useMeetingStore.getState().toggleScreenShare();
+            }
           };
         }
       } catch (err) {
@@ -257,8 +262,8 @@ export const MeetingRoom: React.FC = () => {
   }, [isScreenSharing, localStream, replaceVideoTrack]);
 
   useEffect(() => {
-    const replacementTrack = privacyBlurStream.outputStream?.getVideoTracks()[0]
-      || (isScreenSharing ? screenShareStream?.getVideoTracks()[0] : effectiveStream?.getVideoTracks()[0]);
+    const replacementTrack = getLiveVideoTrack(privacyBlurStream.outputStream)
+      || (isScreenSharing ? getLiveVideoTrack(screenShareStream) : getLiveVideoTrack(effectiveStream));
 
     if (replacementTrack) {
       replaceVideoTrack(replacementTrack);
@@ -354,6 +359,15 @@ export const MeetingRoom: React.FC = () => {
         isLocal: false,
       })),
   ];
+  const participantCount = participantViews.length;
+  const sidebarParticipants = participantViews.map((participant) => ({
+    userId: participant.userId,
+    userName: participant.name,
+    role: participants.find((item) => item.userId === participant.userId)?.role,
+    isMuted: participant.isMuted,
+    isCameraOff: participant.isCameraOff,
+    isHandRaised: participant.isHandRaised,
+  }));
 
   return (
     <div className={`flex flex-col h-[100dvh] h-screen ${theme === 'dark' ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
@@ -373,7 +387,7 @@ export const MeetingRoom: React.FC = () => {
           </button>
         </div>
         <div className="text-xs text-gray-500">
-          {t('meeting.participants', { count: participants.length + 1 })}
+          {t('meeting.participants', { count: participantCount })}
         </div>
       </header>
 
@@ -451,7 +465,7 @@ export const MeetingRoom: React.FC = () => {
             </div>
             <div className="flex-1 overflow-hidden">
               {sidebarTab === 'chat' ? (
-                <ChatPanel roomId={meetingId || ''} currentUserId={currentUserId} />
+                <ChatPanel roomId={meetingId || ''} currentUserId={currentUserId} userName={userName} />
               ) : sidebarTab === 'whiteboard' ? (
                 <WhiteboardPanel meetingId={meetingId || ''} userId={currentUserId} userName={userName} onClose={() => { setSidebarOpen(false); useWhiteboardStore.getState().setWhiteboardOpen(false); }} />
               ) : sidebarTab === 'polls' ? (
@@ -469,7 +483,7 @@ export const MeetingRoom: React.FC = () => {
                   </div>
                 </div>
               ) : (
-                <ParticipantList participants={participants} currentUserId={currentUserId} />
+                <ParticipantList participants={sidebarParticipants} currentUserId={currentUserId} />
               )}
             </div>
           </div>

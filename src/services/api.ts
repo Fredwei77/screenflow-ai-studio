@@ -54,10 +54,10 @@ export const roomsApi = {
 
 // AI
 export const aiApi = {
-  generateQuestion: (context: string, tone: string) =>
+  generateQuestion: (context: string, tone: string, language: 'zh-CN' | 'en-US' = 'en-US') =>
     request<any>('/ai/questions', {
       method: 'POST',
-      body: JSON.stringify({ context, tone }),
+      body: JSON.stringify({ context, tone, language }),
     }),
   analyzePerformance: (transcript: string) =>
     request<any>('/ai/analyze', {

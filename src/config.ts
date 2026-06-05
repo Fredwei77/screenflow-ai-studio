@@ -1,7 +1,7 @@
 export const config = {
   useMockSpeechRecognition: false,
-  speechLanguage: 'en-US',
-  aiTriggerThreshold: 20,
+  speechLanguage: 'auto',
+  aiTriggerThreshold: 80,
   silenceTimeout: 2000,
   debugMode: true,
   aiModel: 'meta-llama/llama-3.1-8b-instruct:free',

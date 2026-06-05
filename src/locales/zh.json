@@ -105,9 +105,16 @@
       "contact": "联系方式",
       "contactPlaceholder": "微信、手机号或邮箱",
       "company": "公司/机构",
-      "role": "职位/角色",
+      "role": "身份",
       "teamSize": "团队人数",
       "useCase": "使用场景",
+      "willingness": "是否愿意付费",
+      "willingnessOptions": {
+        "yes": "愿意，29-59 元/月可接受",
+        "maybe": "感兴趣，想先试用后决定",
+        "team": "需要团队版或私有化报价",
+        "no": "暂时不愿意付费"
+      },
       "message": "补充说明",
       "messagePlaceholder": "例如：预计录课频率、团队使用人数、需要优先开放的 Pro 功能",
       "submit": "提交意向",
@@ -157,7 +164,11 @@
   "chat": {
     "noMessages": "暂无消息",
     "placeholder": "输入消息...",
-    "send": "发送消息"
+    "send": "发送消息",
+    "connecting": "正在连接聊天房间...",
+    "notInRoom": "聊天房间连接已恢复，请再发送一次。",
+    "timeout": "发送超时，请检查连接后重试。",
+    "failedSend": "发送失败，请稍后重试。"
   },
   "whiteboard": {
     "title": "白板",
@@ -211,7 +222,12 @@
     "speakToGenerate": "请开始说话...",
     "connectionError": "连接错误",
     "initializing": "初始化中...",
-    "previewMode": "预览模式"
+    "previewMode": "预览模式",
+    "fullScreenShare": {
+      "title": "正在共享整个屏幕",
+      "description": "已隐藏本页实时预览，避免录课画面无限套娃。",
+      "tip": "建议重新点击屏幕来源，选择具体窗口或浏览器标签页，而不是整个屏幕。录制仍会继续捕获你选择的屏幕内容。"
+    }
   },
   "settings": {
     "title": "设置",
@@ -238,11 +254,29 @@
     "thinking": "思考中...",
     "listening": "聆听中",
     "startSpeaking": "请开始说话...",
-    "aiDescription": "AI 将生成问题帮助你继续。"
+    "aiDescription": "AI 将生成问题帮助你继续。",
+    "categories": {
+      "deep-dive": "深入追问",
+      "clarification": "澄清",
+      "creative": "创意扩展",
+      "support": "辅助"
+    },
+    "priorities": {
+      "low": "低",
+      "medium": "中",
+      "high": "高"
+    }
   },
   "performance": {
     "liveAnalysis": "实时分析",
-    "performance": "表现"
+    "performance": "表现",
+    "metrics": {
+      "Clarity": "清晰",
+      "Engagement": "参与",
+      "Structure": "结构",
+      "Pacing": "节奏",
+      "Actionability": "行动"
+    }
   },
   "subtitles": {
     "notSupported": "语音识别不支持！请使用 Chrome 或 Edge 浏览器。",

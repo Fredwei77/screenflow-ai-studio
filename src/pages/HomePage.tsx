@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Captions, Crown, FileText, LogIn, PenTool, Plus, Sparkles, Video } from 'lucide-react';
+import { Captions, Crown, FileText, LayoutDashboard, LogIn, PenTool, Plus, Sparkles, Video } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Card } from '../components/ui/Card';
@@ -72,6 +72,13 @@ export const HomePage: React.FC = () => {
           </div>
           <div className="flex items-center gap-3">
             <button
+              onClick={() => navigate('/workspace')}
+              className="hidden items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm font-medium text-gray-200 transition-colors hover:bg-gray-800 md:inline-flex"
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              产品工作台
+            </button>
+            <button
               onClick={() => navigate('/pricing')}
               className="hidden items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-3 py-2 text-sm font-medium text-cyan-200 transition-colors hover:bg-cyan-500/20 sm:inline-flex"
             >
@@ -128,6 +135,9 @@ export const HomePage: React.FC = () => {
           <div className="mt-8 flex flex-wrap gap-3">
             <Button size="lg" onClick={() => navigate('/record')} icon={<Video className="h-5 w-5" />}>
               {t('home.startRecording')}
+            </Button>
+            <Button size="lg" variant="secondary" onClick={() => navigate('/workspace')} icon={<LayoutDashboard className="h-5 w-5" />}>
+              产品工作台
             </Button>
             <Button size="lg" variant="secondary" onClick={() => navigate('/pricing')} icon={<Crown className="h-5 w-5" />}>
               {t('home.viewPricing')}

@@ -341,7 +341,9 @@ export function setupSocketHandlers(io: Server) {
       { roomId, content }: { roomId: string; content: string },
       callback?: (result: { ok?: boolean; message?: string }) => void
     ) => {
-      if (roomId !== currentRoom) {
+      const roomMembers = rooms.get(roomId);
+      const isInRequestedRoom = currentRoom === roomId || socket.rooms.has(roomId) || !!roomMembers?.has(socket.id);
+      if (!isInRequestedRoom) {
         callback?.({ message: 'Not in this room' });
         return;
       }

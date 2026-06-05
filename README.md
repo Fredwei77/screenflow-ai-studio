@@ -1,19 +1,28 @@
 # ScreenFlow AI
 
-ScreenFlow AI 是面向在线教学、企业培训和内容创作者的 AI 视频工作台，支持 AI 录课、屏幕共享录制、人像视频解说、自动字幕、AI 副驾驶、实时分析、隐私模糊、视频剪辑和多平台发布工作流。
+ScreenFlow AI 是面向在线教学、企业培训和内容创作者的 AI 视频工作台，支持 AI 录课、会议、自动字幕、AI 副驾驶、实时分析、白板/画笔标注、隐私模糊、视频剪辑、字幕导出、发布工作台和 Pro 付费意愿验证。
 
 线上演示地址：`https://www.emai2.cn/meet/`
 
 ## 本次存档备注
 
-本次存档重点修复了多人会议室底栏功能和电脑端 WebRTC 视频接收稳定性：
+存档日期：2026-06-05
 
-- 修复电脑端同时接收远端音频和视频 producer 时，多个请求共用 `consumed` 响应事件导致 SDP 参数串线的问题。客户端现在按响应事件串行处理 SFU 请求，并对 producer 做去重和关闭清理。
-- 修复虚拟背景切换时误停麦克风轨道、重复发布音频 producer、摄像头已就绪但画布未开始绘制、二次切换动画状态未重置的问题。
-- 新增聊天历史消息 API。进入会议后会加载最近 100 条消息，并与 Socket 实时消息合并去重。
-- 聊天发送增加服务端确认、超时处理和错误提示。未成功发送时保留输入内容，未加入房间的客户端不能向会议发送消息。
-- 修复刚进入会议时立即创建投票可能遇到 `Room not found` 的竞态：服务端会在发出 `room-joined` 前确保房间已写入数据库。
-- 完善投票实时连接、服务端输入清理、投票 ID 同步和匿名主持人关闭投票校验。普通参会者不能关闭投票。
+本次工作重点是把 ScreenFlow AI 从“功能型项目”继续推进成“可验证付费意愿的产品”，同时集中修复 AI 录课和会议室中的关键体验问题。
+
+### 今日完成
+
+- 新增产品工作台和 Pro 申请处理后台入口，用于查看商业线索、管理 Pro 申请状态，并支持“开始审核 / 通过申请 / 拒绝申请”等处理动作。
+- 优化 Pricing/Pro 申请链路，将申请数据写入本地商业线索池，为后续接入后端、CRM 或真实线索管理后台预留结构。
+- 修复 AI 录课中文界面下 AI 副驾驶输出英文的问题，前后端均按语言参数生成中文提示。
+- 优化 AI 副驾驶提示质量，减少泛泛的问题，优先给出可执行、贴近当前讲解内容的中文辅助提示。
+- 修复中文连续说话时字幕容易只有拼音没有汉字的问题，录课页会按界面语言选择更合适的识别语言。
+- 优化共享整个屏幕时的无限递归预览问题，录课页会隐藏整屏共享的实时预览，降低误录自身页面的风险。
+- 优化“分析”板块的中文指标、布局和实时反馈显示。
+- 完善 AI 录课页画笔工具：画笔、高亮、箭头、圆圈、激光笔、橡皮擦、隐私模糊、撤销、重做、清空等交互更完整。
+- 修复会议室聊天发送时提示 `Not in this room` 的问题，客户端会等待/恢复房间加入状态后再发送。
+- 修复一人进入会议室但右上角显示 2 位参与者的问题，顶部参与者数量改为使用实际展示成员数。
+- 修复会议室共享功能退出后主屏摄像头黑屏的问题，恢复摄像头时会校验 live video track，并避免替换已结束的 track。
 
 ## 技术栈
 
@@ -61,6 +70,7 @@ cmd /c npm start
 
 ```bash
 cmd /c npm run build
+cd server && cmd /c npm run build
 ```
 
 > 在 Windows PowerShell 中直接执行 `npm` 可能被执行策略拦截，建议使用 `cmd /c npm ...` 或 `npm.cmd ...`。
@@ -69,162 +79,99 @@ cmd /c npm run build
 
 | 路径 | 页面 | 说明 |
 | --- | --- | --- |
-| `/` | HomePage | 产品首页，展示价值主张并创建/加入会议 |
-| `/pricing` | PricingPage | 商业化套餐、Pro 内测和意向表单 |
-| `/record` | RecordPage | 独立录制、字幕、AI 副驾驶、分析、剪辑、封面和发布入口 |
-| `/meeting/:meetingId` | MeetingRoom | 多人会议室 |
+| `/` | HomePage | 产品首页，创建/加入会议，进入录课和商业化入口 |
+| `/pricing` | PricingPage | 套餐、Pro 内测申请和付费意愿采集 |
+| `/workspace` | WorkspacePage | 产品化工作台，展示录课、会议、字幕、摘要、白板和发布流程 |
+| `/applications` | ApplicationsPage | Pro 申请处理清单，支持审核状态管理 |
+| `/record` | RecordPage | 独立 AI 录课、字幕、AI 副驾驶、分析、画笔、剪辑和发布入口 |
+| `/meeting/:meetingId` | MeetingRoom | 多人会议室、聊天、成员、白板、投票、录制 |
 | `/settings` | SettingsPage | 主题和语言设置 |
 
 ## 核心功能
 
-### AI 录课与录制
+### AI 录课
 
-- 支持摄像头、屏幕、共享窗口 + 人像解说录制。
-- 支持画中画、左右并排、悬浮圆形人像等布局。
-- 人像解说支持位置预设、拖拽移动和小/中/大尺寸切换。
-- 录制完成后可下载 WebM 视频。
-- 录制页提供视频剪辑、AI 封面生成和发布工作流入口。
+- 支持摄像头、屏幕、共享窗口、整屏共享和人像解说录制。
+- 支持画中画、左右并排、悬浮人像、布局切换和拖拽定位。
+- 支持实时字幕、SRT/VTT 字幕导出、AI 摘要、AI 分析、视频剪辑和发布入口。
+- 整屏共享时自动隐藏本页预览，避免无限递归画面。
 
 ### AI 副驾驶与分析
 
-- 基于实时语音转写生成讲解问题、补充建议和互动提示。
-- 分析模块返回清晰度、节奏、互动、结构等指标。
-- 支持摘要、亮点、风险点和下一步行动建议。
+- 根据实时转写生成中文辅助提示、追问、补充案例建议和结构化讲解建议。
+- 分析模块展示清晰、参与、结构、节奏、行动等指标。
+- AI 提示会结合最近上下文，降低重复和空泛提示。
 
-### 隐私模糊
+### 画笔与隐私模糊
 
-- 支持录制、屏幕共享和在线演示时点击添加模糊区域。
-- 可用于遮挡文字、图像、输入框、段落或任意敏感区域。
-- 模糊区域会进入预览和最终录制流。
+- 支持画笔、高亮、箭头、圆圈、激光笔、橡皮擦、隐私模糊。
+- 支持颜色、笔触粗细、撤销、重做和清空。
+- 激光笔只显示实时轨迹，不会写入永久标注。
+- 清空和橡皮擦操作也进入撤销链路。
 
-### 多平台发布
+### 会议室
 
-- 发布弹窗支持选择 YouTube、小红书、抖音、微信视频号。
-- 后端提供平台账号状态、OAuth 跳转和发布提交接口。
-- 当前支持演示模式，配置平台凭证后可切换到真实平台上传适配。
+- 支持多人会议、成员列表、聊天、白板、投票、录制列表和屏幕共享。
+- 聊天发送会确认房间加入状态，避免未加入房间时消息丢失。
+- 参与者数量使用实际展示成员数，避免本地用户重复计数。
+- 退出共享后会恢复可用摄像头轨道，避免主屏黑屏。
 
 ### Pro 内测与商业化验证
 
-- 免费版、Pro 版、Team 版套餐展示。
-- Pro 意向申请会保存申请编号、审核状态和方案信息。
-- 已申请 Pro 内测后，可体验发布、剪辑、封面、字幕导出等 Pro 功能入口。
-
-### 自动字幕
-
-- 基于浏览器语音识别生成实时字幕。
-- 支持字幕样式设置、自动隐藏和远端字幕展示。
-- Pro 功能包含 SRT/VTT 字幕导出。
-
-### 会议与白板
-
-- 支持多人会议、聊天历史、成员列表和屏幕共享。
-- 支持虚拟背景模糊、纯色背景和预设图片背景。
-- 支持实时投票、投票结果同步和主持人关闭投票。
-- WebRTC 使用 mediasoup SFU，客户端会串行处理共享响应事件的消费请求，避免电脑端并发接收音视频时出现 SDP 冲突。
-- 支持白板、画笔、橡皮擦和实时同步。
-- 支持会议摘要、要点、待办事项和未解决问题提取。
+- Pricing 页支持提交 Pro/Team 意向申请。
+- 申请会保存编号、联系方式、团队规模、使用场景、付费意愿和审核状态。
+- Applications 页支持搜索申请、查看详情，并处理审核状态。
+- 商业化事件会写入本地线索池，方便后续接入后端、CRM 或埋点系统。
 
 ## API 说明
 
 ### AI API
 
-- `POST /api/ai/questions`：根据实时转写生成 AI 副驾驶问题建议。
-- `POST /api/ai/analyze`：根据转写文本生成录课分析结构。
-
-### 发布 API
-
-- `GET /api/publish/platforms`：获取平台列表和连接状态。
-- `GET /api/publish/oauth/:platform`：获取平台 OAuth 授权地址。
-- `GET /api/publish/accounts`：获取已连接账号。
-- `POST /api/publish`：提交发布任务。
+- `POST /api/ai/questions`：根据实时转写和语言参数生成 AI 副驾驶提示。
+- `POST /api/ai/analyze`：根据转写文本生成录课表现分析。
 
 ### 会议 API
 
 - `GET /api/chat/:meetingId`：获取会议最近 100 条聊天消息。
-- `GET /api/polls/:meetingId`：获取会议投票列表和投票结果。
+- `GET /api/polls/:meetingId`：获取会议投票列表和结果。
 - `POST /api/polls/:meetingId`：创建投票。
 - `POST /api/polls/:pollId/vote`：提交投票。
 
 开发环境下，前端 `/meet/api/*` 会代理到后端 `http://localhost:4000/api/*`。
 
-## 环境变量
-
-| 变量 | 说明 | 位置 |
-| --- | --- | --- |
-| `DATABASE_URL` | Prisma 数据库连接字符串 | `server/.env` |
-| `JWT_SECRET` | JWT 签名密钥，生产必填 | `server/.env` |
-| `OPENROUTER_API_KEY` | AI 功能 API Key | `.env.local` 或 `server/.env` |
-| `AI_MODEL` | AI 模型名称 | `server/.env` |
-| `CORS_ORIGIN` | 生产环境允许的前端来源 | `server/.env` |
-| `ANNOUNCED_IP` | SFU 对外公布 IP | `server/.env` |
-| `PUBLISH_DEMO_MODE` | 发布功能演示模式开关 | `.env.local` 或 `server/.env` |
-| `PUBLIC_BASE_URL` | 发布回调和公开服务基础地址 | `.env.local` 或 `server/.env` |
-| `YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET` | YouTube OAuth 凭证 | `server/.env` |
-| `DOUYIN_CLIENT_KEY` / `DOUYIN_CLIENT_SECRET` | 抖音开放平台凭证 | `server/.env` |
-| `XIAOHONGSHU_CLIENT_ID` / `XIAOHONGSHU_CLIENT_SECRET` | 小红书开放平台凭证 | `server/.env` |
-| `WECHAT_CHANNELS_APP_ID` / `WECHAT_CHANNELS_APP_SECRET` | 微信视频号凭证 | `server/.env` |
-
 ## 项目结构
 
 ```text
 src/
-  components/        UI 组件、会议组件、录制组件、发布组件
-  hooks/             WebRTC、录制、字幕、提词器、隐私模糊、流合成 hooks
-  pages/             HomePage、PricingPage、RecordPage、MeetingRoom、SettingsPage
-  stores/            Zustand 状态管理
+  components/        UI、录制、会议、标注、分析和聊天组件
+  hooks/             WebRTC、媒体流、录制、字幕、隐私模糊等 hooks
+  pages/             Home、Pricing、Workspace、Applications、Record、Meeting、Settings
   services/          API、Socket、发布服务
+  stores/            Zustand 状态管理
   locales/           en.json、zh.json
-  lib/               格式化工具、商业化意向记录
-  utils/             字幕导出等工具
+  lib/               商业化线索和格式化工具
 server/
   src/
     routes/          API 路由
     socket/          Socket.IO 事件处理
     services/        AI 服务
     sfu/             mediasoup SFU
-    prisma.ts        Prisma 客户端
 ```
 
-## 常见问题
+## 验证记录
 
-### 端口被占用
+本次存档前已执行：
 
-如果启动时报错：
-
-```text
-EADDRINUSE: address already in use :::4000
+```bash
+npm.cmd run build
+cd server && cmd /c npm run build
 ```
 
-检查并结束占用进程：
-
-```bat
-netstat -ano | findstr :4000
-taskkill /PID <PID> /F /T
-```
-
-### 生产环境 JWT_SECRET
-
-生产环境必须配置：
-
-```text
-JWT_SECRET=your-secure-secret
-```
-
-否则服务端会主动退出，避免使用默认开发密钥。
-
-### 电脑端无法显示其他用户视频
-
-如果电脑端控制台出现以下错误：
-
-```text
-Failed to parse SessionDescription. Duplicate a=msid lines detected
-```
-
-请确认已部署包含 SFU 消费请求串行化修复的新前端构建，并在电脑端强制刷新缓存。该问题通常由音频和视频 producer 同时到达时复用同一个 `consumed` 响应事件引起。
+前端和后端构建均已通过。前端仍有 Vite 大 chunk 提示，属于现有打包体积提示，不影响运行。
 
 ## 后续建议
 
-- 将 Pro 意向申请从 `localStorage` 接入后端数据库、CRM 或埋点系统。
-- 补齐各发布平台真实上传适配和发布任务队列。
-- 为 AI 副驾驶和分析接口增加服务端限流、日志和错误观测。
+- 将 Pro 申请从 `localStorage` 接入后端数据库、CRM 或真实线索管理后台。
+- 为发布工作台接入真实平台上传任务队列和 OAuth 凭证。
+- 对 AI 副驾驶、分析接口增加服务端限流、日志和错误观测。
 - 对大体积前端 bundle 做路由级代码拆分。

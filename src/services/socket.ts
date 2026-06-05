@@ -29,6 +29,45 @@ export function joinRoom(meetingId: string, userName?: string) {
   getSocket().emit('join-room', { meetingId, userName });
 }
 
+export function joinRoomAndWait(meetingId: string, userName?: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const socket = getSocket();
+    const timeout = setTimeout(() => {
+      socket.off('room-joined', handleJoined);
+      socket.off('room-full', handleRoomFull);
+      socket.off('room-error', handleRoomError);
+      reject(new Error('Join room timed out'));
+    }, 8000);
+
+    const cleanup = () => {
+      clearTimeout(timeout);
+      socket.off('room-joined', handleJoined);
+      socket.off('room-full', handleRoomFull);
+      socket.off('room-error', handleRoomError);
+    };
+
+    const handleJoined = () => {
+      cleanup();
+      resolve();
+    };
+
+    const handleRoomFull = () => {
+      cleanup();
+      reject(new Error('Room is full'));
+    };
+
+    const handleRoomError = (payload?: { message?: string }) => {
+      cleanup();
+      reject(new Error(payload?.message || 'Failed to join room'));
+    };
+
+    socket.once('room-joined', handleJoined);
+    socket.once('room-full', handleRoomFull);
+    socket.once('room-error', handleRoomError);
+    socket.emit('join-room', { meetingId, userName });
+  });
+}
+
 export function leaveRoom(meetingId: string) {
   getSocket().emit('leave-room', { meetingId });
 }
@@ -47,8 +86,8 @@ export function sendIceCandidate(to: string, candidate: RTCIceCandidateInit) {
 }
 
 // Chat events
-export function sendMessage(roomId: string, content: string): Promise<void> {
-  return new Promise((resolve, reject) => {
+const emitChatMessage = (roomId: string, content: string): Promise<void> =>
+  new Promise((resolve, reject) => {
     getSocket().timeout(5000).emit(
       'chat:message',
       { roomId, content },
@@ -63,6 +102,18 @@ export function sendMessage(roomId: string, content: string): Promise<void> {
       }
     );
   });
+
+export async function sendMessage(roomId: string, content: string, userName?: string): Promise<void> {
+  try {
+    await emitChatMessage(roomId, content);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Not in this room') {
+      await joinRoomAndWait(roomId, userName);
+      await emitChatMessage(roomId, content);
+      return;
+    }
+    throw error;
+  }
 }
 
 // Media state events

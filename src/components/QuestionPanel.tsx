@@ -35,6 +35,17 @@ const QuestionPanel: React.FC<QuestionPanelProps> = ({ questions, isProcessing }
     }
   };
 
+  const getCategoryLabel = (category: string) => {
+    const translated = t(`questions.categories.${category}`, { defaultValue: '' });
+    return translated || category;
+  };
+
+  const getPriorityLabel = (priority?: string) => {
+    if (!priority) return '';
+    const translated = t(`questions.priorities.${priority}`, { defaultValue: '' });
+    return translated || priority;
+  };
+
   return (
     <div className="flex flex-col h-full bg-gray-850 rounded-xl border border-gray-750 overflow-hidden shadow-xl">
       <div className="p-4 border-b border-gray-750 bg-gray-900 flex justify-between items-center">
@@ -62,10 +73,10 @@ const QuestionPanel: React.FC<QuestionPanelProps> = ({ questions, isProcessing }
             >
               <div className="flex items-center gap-2 mb-2 text-xs uppercase tracking-wider text-gray-400 font-bold">
                 {getIcon(q.category)}
-                {q.category}
+                {getCategoryLabel(q.category)}
                 {q.priority && (
                   <span className={`ml-auto rounded-full border px-2 py-0.5 text-[10px] normal-case tracking-normal ${getPriorityClass(q.priority)}`}>
-                    {q.priority}
+                    {getPriorityLabel(q.priority)}
                   </span>
                 )}
               </div>
