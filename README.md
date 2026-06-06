@@ -26,8 +26,6 @@
   <img alt="GitHub forks" src="https://img.shields.io/github/forks/YiMai-AI/screenflow-ai-studio?style=flat-square&logo=github" />
 </p>
 
-> If you publish under another GitHub owner, replace `YiMai-AI/screenflow-ai-studio` in the badge URLs with your repository path.
-
 <p align="center">
   <img src="docs/assets/demo.gif" alt="ScreenFlow AI demo GIF" width="880" />
 </p>
