@@ -37,3 +37,11 @@ server/prisma/migrations/
 
 # Build output
 server/dist/
+
+# Local private files
+zhifubao.png
+demo.mp4
+*.pem
+*.key
+*.crt
+*.p12

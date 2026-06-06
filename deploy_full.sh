@@ -1,11 +1,11 @@
-#!/bin/bash
+﻿#!/bin/bash
 # ============================================================
 # ScreenFlow AI Studio — 完整部署脚本 (含 TURN 视频穿透)
 # 适用：腾讯云 / Ubuntu 22.04
 # ============================================================
 set -e
 
-DOMAIN="www.emai2.cn"
+DOMAIN="your-domain.example"
 APP_PORT="4000"
 TURN_PORT="3478"
 TURN_TLS_PORT="443"
@@ -63,7 +63,7 @@ realm=${DOMAIN}
 # 开放中继（视频会议场景，无认证）
 lt-cred-mech
 # 用户名/密码（用于 WebRTC TURN）
-user=screenflow:screenflow-turn-2024
+user=screenflow:replace-with-a-strong-turn-password
 
 # 协议
 stun-only
@@ -205,7 +205,7 @@ if [ ! -f .env ]; then
   JWT_SECRET=$(openssl rand -hex 32)
   cat > .env << EOF
 JWT_SECRET=${JWT_SECRET}
-OPENROUTER_API_KEY=sk-your-key-here
+OPENROUTER_API_KEY=replace-with-your-openrouter-key
 AI_MODEL=meta-llama/llama-3.1-8b-instruct:free
 CORS_ORIGIN=https://${DOMAIN}
 EOF

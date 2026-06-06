@@ -1,4 +1,4 @@
-# Deployment Guide
+﻿# Deployment Guide
 
 ## Prerequisites
 
@@ -36,7 +36,7 @@ cd screenflow-ai-studio
 # Create .env file with production values
 cat > .env << EOF
 JWT_SECRET=$(openssl rand -hex 32)
-OPENROUTER_API_KEY=sk-or-your-key-here
+OPENROUTER_API_KEY=replace-with-your-openrouter-key
 AI_MODEL=meta-llama/llama-3.1-8b-instruct:free
 CORS_ORIGIN=https://yourdomain.com
 SSL_CERT_PATH=/path/to/your/cert.pem

@@ -19,13 +19,12 @@
     "title": "ScreenFlow AI",
     "subtitle": "AI 视频工作台",
     "tagline": "面向在线教学 企业培训 内容创作者",
-    "headline": "AI 录课 自动字幕 会议总结 白板互动 一站完成",
+    "headline": "把录制、理解与交付整合为一套 AI 视频工作流",
     "headlineLines": [
-      "AI 录课 自动字幕",
-      "会议总结 白板互动",
-      "一站完成"
+      "把视频内容生产",
+      "变成可复用的增长资产"
     ],
-    "description": "ScreenFlow AI 把视频会议、屏幕录制、实时字幕、AI 摘要和互动白板放进同一个工作台，帮助老师、培训团队和创作者更快完成课程录制、会议复盘和内容发布。",
+    "description": "ScreenFlow AI 将录制、转写、总结、白板协作与发布交付整合为一套闭环工作流，帮助教学和培训团队降低内容生产成本，并提升知识复用效率。",
     "startRecording": "开始 AI 录课",
     "viewPricing": "查看 Pro 方案",
     "proBeta": "Pro 内测",

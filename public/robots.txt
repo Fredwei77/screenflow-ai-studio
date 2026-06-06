@@ -1,4 +1,4 @@
-User-agent: *
+﻿User-agent: *
 Allow: /meet/
 
-Sitemap: https://www.emai2.cn/meet/sitemap.xml
+Sitemap: https://your-domain.example/meet/sitemap.xml

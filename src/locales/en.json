@@ -19,14 +19,12 @@
     "title": "ScreenFlow AI",
     "subtitle": "AI Video Workspace",
     "tagline": "For online education, corporate training, and creators",
-    "headline": "AI course recording, auto subtitles, meeting summaries, and whiteboard interaction in one place",
+    "headline": "Turn video production into a repeatable AI workflow",
     "headlineLines": [
-      "AI course recording",
-      "Auto subtitles",
-      "Meeting summaries",
-      "Whiteboard interaction"
+      "Turn video knowledge",
+      "into reusable operating assets"
     ],
-    "description": "ScreenFlow AI combines video meetings, screen recording, live subtitles, AI summaries, and an interactive whiteboard in one workspace so teachers, training teams, and creators can finish course recordings, meeting recaps, and content publishing faster.",
+    "description": "ScreenFlow AI combines recording, transcription, summaries, whiteboard collaboration, and publishing into one closed-loop workflow so teaching and training teams can lower production cost and improve knowledge reuse.",
     "startRecording": "Start AI Recording",
     "viewPricing": "View Pro Plans",
     "proBeta": "Pro Beta",
