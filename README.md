@@ -62,15 +62,6 @@ Most AI recording tools stop at transcription. ScreenFlow AI goes further:
 | Publishing Desk | Cover generation, subtitle export, summary packaging, and platform-ready workflow |
 | Pro Applications | Lead capture, application review, status handling, and paid-intent validation |
 
-### Commercial Landing Page
-
-The homepage is designed as a conversion-oriented landing page:
-
-- Strategic positioning instead of a feature list.
-- Clear entry points for recording, workspace, pricing, and meetings.
-- Pro demand validation through the pricing and application flow.
-- Metrics and revenue-path copy for converting teams into Pro or private deployment customers.
-
 ### Tech Stack
 
 | Layer | Stack |
@@ -161,15 +152,6 @@ ScreenFlow AI 是一个面向在线教学、企业培训和内容创作者的开
 | AI 副驾驶 | 实时提示、案例补充、追问建议和讲解结构优化 |
 | 发布工作台 | 封面生成、字幕导出、摘要打包和发布流程准备 |
 | Pro 申请 | 线索采集、申请审核、状态管理和付费意愿验证 |
-
-### 直接变现的 Landing Page
-
-首页已经按转化目标重构：
-
-- 用战略主张替代功能堆叠，首屏更像专业咨询型产品。
-- 明确引导用户进入录课、产品工作台、价格页和会议室。
-- 通过 Pricing + Pro 申请表采集真实需求和付费意愿。
-- 用商业化路径说明如何从免费体验转化到 Pro 或私有化部署。
 
 ### 技术栈
 
