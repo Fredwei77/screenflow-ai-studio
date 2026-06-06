@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="docs/assets/github-cover.png" alt="ScreenFlow AI GitHub cover" width="100%" />
-</p>
+<img width="1908" height="953" alt="0" src="https://github.com/user-attachments/assets/caa6b0e7-42df-4462-a8d8-fdc15ba6434d" />
 
 <h1 align="center">ScreenFlow AI</h1>
 
