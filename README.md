@@ -113,8 +113,6 @@ For mediasoup/WebRTC deployment, configure:
 - `OPENROUTER_API_KEY`: server-side AI key.
 - `CORS_ORIGIN`: production domain.
 
-Do not commit production `.env` files, local databases, TURN credentials, OAuth secrets, or private deployment paths.
-
 ### Support
 
 If this project helps you, donations are welcome.
@@ -204,8 +202,6 @@ WebRTC/mediasoup 部署时重点配置：
 - `OPENROUTER_API_KEY`：服务端 AI Key。
 - `CORS_ORIGIN`：生产域名。
 
-不要提交生产 `.env`、本地数据库、TURN 密码、OAuth Secret、真实服务器 IP 或私有部署路径。
-
 ### 支持项目
 
 如果 ScreenFlow AI 对你有帮助，欢迎通过支付宝打赏支持项目维护。
@@ -219,10 +215,3 @@ WebRTC/mediasoup 部署时重点配置：
 本项目使用 MIT License，详见 [LICENSE](./LICENSE)。
 
 ---
-
-## Repository Hygiene
-
-- Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening pull requests.
-- Read [SECURITY.md](./SECURITY.md) before reporting vulnerabilities.
-- Rotate any real API key that has ever appeared in local `.env*` files.
-- Keep `demo.mp4`, local screenshots, and private QR code source files out of git unless intentionally published.
